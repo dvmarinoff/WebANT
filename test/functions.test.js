@@ -1,4 +1,5 @@
 import { exists,
+         existance,
          empty,
          first,
          second,
@@ -10,30 +11,42 @@ import { exists,
          toUint8Array,
          typeToAccessor} from '../src/functions.js';
 
-describe('existance check', () => {
+describe('Exists', () => {
     describe('does not exist', () => {
-        test('with Null', () => {
+        test('null does not exist', () => {
             expect(exists(null)).toBe(false);
         });
-        test('with Undefined', () => {
+        test('undefined does not exist', () => {
             expect(exists(undefined)).toBe(false);
         });
     });
 
     describe('exists', () => {
-        test('with Collection', () => {
+        test('empty Collections exist', () => {
             expect(exists({})).toBe(true);
             expect(exists([])).toBe(true);
             expect(exists("")).toBe(true);
             expect(exists(new Uint8Array([]))).toBe(true);
         });
-        test('with Number', () => {
+        test('zero exists', () => {
             expect(exists(0)).toBe(true);
         });
-        test('with Boolean', () => {
+        test('Booleans exist', () => {
             expect(exists(true)).toBe(true);
             expect(exists(false)).toBe(true);
         });
+    });
+});
+
+describe('Existance', () => {
+
+    test('if value does not exist return a fallback', () => {
+        expect(existance(0,         'fallback value')).toEqual(0);
+        expect(existance(false,     'fallback value')).toEqual(false);
+        expect(existance(1,         'fallback value')).toEqual(1);
+        expect(existance(true,      'fallback value')).toEqual(true);
+        expect(existance(null,      'fallback value')).toEqual('fallback value');
+        expect(existance(undefined, 'fallback value')).toEqual('fallback value');
     });
 });
 

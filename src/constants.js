@@ -11,12 +11,14 @@ const ids = {
     searchTimeout:     68, // 0x44
     searchLowTimeout:  99, // 0x63
     enableExtRx:      102, // 0x66
+    libConfig:        110, // 0x6E
 
     // control
     resetSystem:       74, // 0x4A
     openChannel:       75, // 0x4B
     closeChannel:      76, // 0x4C
     requestMessage:    77, // 0x4D
+    openRxScanMode:    91, // 0x5B
     sleepMessage:     197, // 0xC5
 
     // notification
@@ -81,6 +83,12 @@ const events = {
 
 const values = {
     sync: 164,
+    libConfig: {
+        disabled:       0,
+        rxTimestamps:  32, // 0x20
+        rssi:          64, // 0x40
+        channelId:    128, // 0x80
+    },
 };
 
 const channelTypes = {

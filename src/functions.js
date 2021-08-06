@@ -4,9 +4,23 @@ function equals(a, b) {
     return Object.is(a, b);
 }
 
+function isNull(x) {
+    return Object.is(x, null);
+}
+
+function isUndefined(x) {
+    return Object.is(x, undefined);
+}
+
 function exists(x) {
-    if(equals(x, null) || equals(x, undefined)) { return false; }
+    if(isNull(x) || isUndefined(x)) { return false; }
     return true;
+}
+
+function existance(value, fallback) {
+    if(exists(value))    return value;
+    if(exists(fallback)) return fallback;
+    throw new Error(`existance needs a fallback value `, value);
 }
 
 // Collections
@@ -24,14 +38,6 @@ function isCollection(x) {
 
 function isString(x) {
     return equals(typeof x, 'string');
-}
-
-function isNull(x) {
-    return Object.is(x, null);
-}
-
-function isUndefined(x) {
-    return Object.is(x, undefined);
 }
 
 function empty(x) {
@@ -308,11 +314,12 @@ const xf = XF();
 export {
     // values
     equals,
-    exists,
-
-    // collections
     isNull,
     isUndefined,
+    exists,
+    existance,
+
+    // collections
     isArray,
     isObject,
     isString,

@@ -1,4 +1,5 @@
-import { equals, dataviewToArray, nthBitToBool, xor } from './functions.js';
+import { equals, exists, existance, isUndefined,
+         dataviewToArray, nthBitToBool, xor } from './functions.js';
 import { ids, events, channelTypes, values, keys } from './constants.js';
 
 
@@ -59,8 +60,8 @@ function AssignChannel() {
 
 function UnassignChannel() {
     const sync          = values.sync;
-    const fixedLength   = 1;
-    const contentLength = 3;
+    const fixedLength   = 4;
+    const contentLength = 1;
     const totalLength   = fixedLength + contentLength;
     const id            = ids.unassignChannel; // 65, 0x41
 
@@ -75,7 +76,7 @@ function UnassignChannel() {
         const channelNumber = args.channelNumber || defaults.channelNumber;
 
         view.setUint8( 0, sync,          true);
-        view.setUint8( 1, totalLength,   true);
+        view.setUint8( 1, contentLength, true);
         view.setUint8( 2, id,            true);
         view.setUint8( 3, channelNumber, true);
 
@@ -110,7 +111,7 @@ function SetChannelId() {
         const deviceType      = args.deviceType    || defaults.deviceType;
         const transmitionType = args.transType     || defaults.transType;
         view.setUint8( 0, sync,            true);
-        view.setUint8( 1, totalLength,     true);
+        view.setUint8( 1, contentLength,   true);
         view.setUint8( 2, id,              true);
         view.setUint8( 3, channelNumber,   true);
         view.setUint16(4, deviceNumber,    true);
@@ -148,7 +149,7 @@ function SetChannelPeriod() {
         const channelPeriod = args.channelPeriod || defaults.channelPeriod;
 
         view.setUint8( 0, sync,          true);
-        view.setUint8( 1, totalLength,   true);
+        view.setUint8( 1, contentLength, true);
         view.setUint8( 2, id,            true);
         view.setUint8( 3, channelNumber, true);
         view.setUint16(4, channelPeriod, true);
@@ -161,7 +162,7 @@ function SetChannelPeriod() {
     return Object.freeze({ encode });
 }
 
-function ChannelFrequency() {
+function SetChannelFrequency() {
     const sync          = values.sync;
     const fixedLength   = 4;
     const contentLength = 2;
@@ -184,7 +185,7 @@ function ChannelFrequency() {
         const rfFrequency   = args.rfFrequency   || defaults.rfFrequency;
 
         view.setUint8( 0, sync,          true);
-        view.setUint8( 1, totalLength,   true);
+        view.setUint8( 1, contentLength, true);
         view.setUint8( 2, id,            true);
         view.setUint8( 3, channelNumber, true);
         view.setUint8( 4, rfFrequency,   true);
@@ -239,8 +240,8 @@ function SetNetworkKey() {
 // Control Messages
 function ResetSystem() {
     const sync          = values.sync;
-    const fixedLength   = 1;
-    const contentLength = 3;
+    const fixedLength   = 4;
+    const contentLength = 1;
     const totalLength   = fixedLength + contentLength;
     const id            = ids.resetSystem; // 74, 0x4A
 
@@ -249,7 +250,7 @@ function ResetSystem() {
         let view     = new DataView(buffer);
 
         view.setUint8( 0, sync,          true);
-        view.setUint8( 1, totalLength,   true);
+        view.setUint8( 1, contentLength, true);
         view.setUint8( 2, id,            true);
         view.setUint8( 3, 0,             true);
 
@@ -263,8 +264,8 @@ function ResetSystem() {
 
 function OpenChannel() {
     const sync          = values.sync;
-    const fixedLength   = 1;
-    const contentLength = 3;
+    const fixedLength   = 4;
+    const contentLength = 1;
     const totalLength   = fixedLength + contentLength;
     const id            = ids.openChannel; // 75, 0x4B
 
@@ -279,7 +280,7 @@ function OpenChannel() {
         const channelNumber = args.channelNumber || defaults.channelNumber;
 
         view.setUint8( 0, sync,          true);
-        view.setUint8( 1, totalLength,   true);
+        view.setUint8( 1, contentLength, true);
         view.setUint8( 2, id,            true);
         view.setUint8( 3, channelNumber, true);
 
@@ -293,8 +294,8 @@ function OpenChannel() {
 
 function CloseChannel() {
     const sync          = values.sync;
-    const fixedLength   = 1;
-    const contentLength = 3;
+    const fixedLength   = 4;
+    const contentLength = 1;
     const totalLength   = fixedLength + contentLength;
     const id            = ids.closeChannel; // 76, 0x4C
 
@@ -309,7 +310,7 @@ function CloseChannel() {
         const channelNumber = args.channelNumber || defaults.channelNumber;
 
         view.setUint8( 0, sync,          true);
-        view.setUint8( 1, totalLength,   true);
+        view.setUint8( 1, contentLength, true);
         view.setUint8( 2, id,            true);
         view.setUint8( 3, channelNumber, true);
 
@@ -323,14 +324,14 @@ function CloseChannel() {
 
 function RequestMessage() {
     const sync          = values.sync;
-    const fixedLength   = 1;
-    const contentLength = 3;
+    const fixedLength   = 4;
+    const contentLength = 2;
     const id            = ids.requestMessage; // 77, 0x4D
 
     const defaults = {
         channelNumber:      0,
         subMessageId:       false,
-        requestedMessageId: 0,
+        requestedMessageId: 82, // channel status message id
     };
 
     function totalLength() {
@@ -341,18 +342,18 @@ function RequestMessage() {
         let buffer   = new ArrayBuffer(totalLength());
         let view     = new DataView(buffer);
 
-        const channelNumber      = args.channelNumber || defaults.channelNumber;
-        const subMessageId       = args.channelNumber || defaults.channelNumber;
-        const requestedMessageId = args.channelNumber || defaults.channelNumber;
+        const channelNumber      = args.channelNumber      || defaults.channelNumber;
+        const subMessageId       = args.subMessageId       || defaults.subMessageId;
+        const requestedMessageId = args.requestedMessageId || defaults.requestedMessageId;
 
         const param = channelNumber;
         if(subMessageId) param = subMessageId;
 
         view.setUint8( 0, sync,               true);
-        view.setUint8( 1, totalLength,        true);
+        view.setUint8( 1, contentLength,      true);
         view.setUint8( 2, id,                 true);
         view.setUint8( 3, param,              true);
-        view.setUint8( 3, requestedMessageId, true);
+        view.setUint8( 4, requestedMessageId, true);
 
         view.setUint8(totalLength() - 1, xor(view), true);
 
@@ -364,31 +365,41 @@ function RequestMessage() {
 
 function OpenRxScanMode() {
     const sync          = values.sync;
-    const fixedLength   = 1;
-    const id            = ids.sleepMessage; // 197, 0xC5
+    const fixedLength   = 4;
+    let contentLength   = 1;
+    let totalLength     = fixedLength + contentLength;
+    const id            = ids.openRxScanMode; // 91, 0x5B
 
-    function totalLength(syncOnly) {
-        let contentLength = 1;
-        if(syncOnly) contentLength = 2;
+    function ContentLength(syncPackets) {
+        if(syncPackets) return  2;
+        return 1;
+    }
+    function TotalLength(contentLength) {
         return fixedLength + contentLength;
     }
+    function XorIndex() {
+        return totalLength - 1;
+    }
 
-    function encode(args = {syncOnly: false}) {
-        let buffer   = new ArrayBuffer(totalLength(args.syncOnly));
+    function encode(args = {syncPackets: false}) {
+        const syncPackets = args.syncPackets;
+        contentLength  = ContentLength(syncPackets);
+        totalLength    = TotalLength(contentLength);
+        const xorIndex = XorIndex();
+
+        let buffer   = new ArrayBuffer(totalLength);
         let view     = new DataView(buffer);
 
-        const syncOnly = args.syncOnly;
-
         view.setUint8( 0, sync,          true);
-        view.setUint8( 1, totalLength,   true);
+        view.setUint8( 1, contentLength, true);
         view.setUint8( 2, id,            true);
         view.setUint8( 3, 0,             true);
 
-        if(args.syncOnly) {
-            view.setUint8(4, syncOnly,   true);
+        if(syncPackets) {
+            view.setUint8(4, syncPackets,   true);
         }
 
-        view.setUint8(totalLength() - 1, xor(view), true);
+        view.setUint8(xorIndex, xor(view), true);
 
         return view;
     }
@@ -397,8 +408,8 @@ function OpenRxScanMode() {
 
 function Sleep() {
     const sync          = values.sync;
-    const fixedLength   = 1;
-    const contentLength = 3;
+    const fixedLength   = 4;
+    const contentLength = 1;
     const totalLength   = fixedLength + contentLength;
     const id            = ids.sleepMessage; // 197, 0xC5
 
@@ -407,7 +418,7 @@ function Sleep() {
         let view     = new DataView(buffer);
 
         view.setUint8( 0, sync,          true);
-        view.setUint8( 1, totalLength,   true);
+        view.setUint8( 1, contentLength, true);
         view.setUint8( 2, id,            true);
         view.setUint8( 3, 0,             true);
 
@@ -419,317 +430,232 @@ function Sleep() {
     return Object.freeze({ encode });
 }
 
+function SearchTimeout() {
+    const sync          = values.sync;
+    const fixedLength   = 4;
+    const contentLength = 2;
+    const totalLength   = fixedLength + contentLength;
+    const id            = ids.searchTimeout; // 68, 0x44
 
+    const defaults = {
+        channelNumber: 0,
+        searchTimeout: 10, // 10 * 2.5 seconds = 25 seconds
+    };
 
+    function encode(args = {}) {
+        let buffer   = new ArrayBuffer(totalLength);
+        let view     = new DataView(buffer);
 
+        const channelNumber = existance(args.channelNumber, defaults.channelNumber);
+        const searchTimeout = existance(args.searchTimeout, defaults.searchTimeout);
 
-function SearchTimeout(args) {
-    let buffer   = new ArrayBuffer(6);
-    let view     = new DataView(buffer);
-    const sync   = 164; // 0xA4
-    const length = 2;
-    const id     = 68;  // 0x44
-    const channelNumber = args.channelNumber || 0;
-    const timeout       = args.timeout; // 12 * 2.5 = 30s, 255 is infinite
+        view.setUint8( 0, sync,          true);
+        view.setUint8( 1, contentLength, true);
+        view.setUint8( 2, id,            true);
+        view.setUint8( 3, channelNumber, true);
+        view.setUint8( 4, searchTimeout, true);
 
-    view.setUint8(0, sync,          true);
-    view.setUint8(1, length,        true);
-    view.setUint8(2, id,            true);
-    view.setUint8(3, channelNumber, true);
-    view.setUint8(4, timeout,       true);
-    view.setUint8(5, xor(view),     true);
+        view.setUint8(totalLength - 1, xor(view), true);
 
-    return view;
-}
-
-function LowPrioritySearchTimeout(args) {
-    let buffer   = new ArrayBuffer(6);
-    let view     = new DataView(buffer);
-    const sync   = 164; // 0xA4
-    const length = 2;
-    const id     = 99;  // 0x63
-    const channelNumber = args.channelNumber || 0;
-    const timeout       = args.timeoutLow    || 2; // 2 * 2.5 = 5s, 255 is infinite
-
-    view.setUint8(0, sync,          true);
-    view.setUint8(1, length,        true);
-    view.setUint8(2, id,            true);
-    view.setUint8(3, channelNumber, true);
-    view.setUint8(4, timeout,       true);
-    view.setUint8(5, xor(view),     true);
-
-    return view;
-}
-
-function EnableExtRxMessages(args) {
-    let buffer   = new ArrayBuffer(6);
-    let view     = new DataView(buffer);
-    const sync   = 164; // 0xA4
-    const length = 2;
-    const id     = 102; // 0x66
-
-    view.setUint8(0, sync,        true);
-    view.setUint8(1, length,      true);
-    view.setUint8(2, id,          true);
-    view.setUint8(3, 0,           true);
-    view.setUint8(4, args.enable, true);
-    view.setUint8(5, xor(view),   true);
-
-    return view;
-}
-
-function CommonPage70(pageNumber) {
-    let buffer          = new ArrayBuffer(8);
-    let view            = new DataView(buffer);
-    const commandId     = 70; // 0x46, Data Page Request
-    const transResponse = 2;  // 0b00000010
-    const commandType   = 1;
-
-    view.setUint8(0, commandId,     true);
-    view.setUint8(1, 255,           true);
-    view.setUint8(2, 255,           true);
-    view.setUint8(3, 255,           true);
-    view.setUint8(4, 255,           true);
-    view.setUint8(5, transResponse, true);
-    view.setUint8(6, pageNumber,    true);
-    view.setUint8(7, commandType,   true);
-
-    return view;
-}
-
-function RequestDataPage(pageNumber, channel) {
-    return Control(CommonPage70(pageNumber), channel);
-}
-function targetPower(power, channel = 5) {
-    return Control(page.dataPage49(power), channel);
-}
-function targetResistance(level, channel = 5) {
-    return Control(page.dataPage48(level), channel);
-}
-function targetSlope(slope, channel = 5) {
-    return Control(page.dataPage51(slope), channel);
-}
-
-function Control(content, channel = 5) {
-    const sync   = 164;
-    const length = 9;
-    const type   = 79; // Acknowledged 0x4F
-    let buffer   = new ArrayBuffer(13);
-    let view     = new DataView(buffer);
-    view.setUint8(0, sync,    true);
-    view.setUint8(1, length,  true);
-    view.setUint8(2, type,    true);
-    view.setUint8(3, channel, true);
-
-    let j = 4;
-    for(let i = 0; i < 8; i++) {
-        view.setUint8(j, content.getUint8(i), true);
-        j++;
+        return view;
     }
 
-    const crc = xor(view);
-    view.setUint8(12, crc, true);
-
-    return view;
+    return Object.freeze({ encode });
 }
-function Data(dataview) {
-    const sync     = dataview.getUint8(0);
-    const length   = dataview.getUint8(1);
-    const type     = dataview.getUint8(2);
-    const channel  = dataview.getUint8(3);
-    const dataPage = dataview.getUint8(4);
 
-    if(dataPage === 25) {
-        return page.dataPage25(dataview);
+function LowPrioritySearchTimeout() {
+    const sync          = values.sync;
+    const fixedLength   = 4;
+    const contentLength = 2;
+    const totalLength   = fixedLength + contentLength;
+    const id            = ids.searchLowTimeout; // 99, 0x63
+
+    const defaults = {
+        channelNumber: 0,
+        searchTimeout: 2, // 2 * 2.5 seconds = 5 seconds, 255 is infinite
+    };
+
+    function encode(args = {}) {
+        let buffer   = new ArrayBuffer(totalLength);
+        let view     = new DataView(buffer);
+
+        const channelNumber = existance(args.channelNumber, defaults.channelNumber);
+        const searchTimeout = existance(args.searchTimeout, defaults.searchTimeout);
+
+        view.setUint8( 0, sync,          true);
+        view.setUint8( 1, contentLength, true);
+        view.setUint8( 2, id,            true);
+        view.setUint8( 3, channelNumber, true);
+        view.setUint8( 4, searchTimeout, true);
+
+        view.setUint8(totalLength - 1, xor(view), true);
+
+        return view;
     }
-    if(dataPage === 16) {
-        return page.dataPage16(dataview);
+
+    return Object.freeze({ encode });
+}
+
+function EnableExtRxMessages() {
+    const sync          = values.sync;
+    const fixedLength   = 4;
+    const contentLength = 2;
+    const totalLength   = fixedLength + contentLength;
+    const id            = ids.enableExtRx; // 102, 0x66
+
+    const defaults = {
+        enable: 1, // 0 disable, 1 enable
+    };
+
+    function encode(args = {}) {
+        let buffer   = new ArrayBuffer(totalLength);
+        let view     = new DataView(buffer);
+
+        const enable = existance(args.enable, defaults.enable);
+
+        view.setUint8( 0, sync,          true);
+        view.setUint8( 1, contentLength, true);
+        view.setUint8( 2, id,            true);
+        view.setUint8( 3, 0,             true);
+        view.setUint8( 4, enable,        true);
+
+        view.setUint8(totalLength - 1, xor(view), true);
+
+        return view;
     }
-    return { page: 0 };
+
+    return Object.freeze({ encode });
 }
 
-// Decode
-function readExtendedData(data) {
-    const length        = data[1];
-    const id            = data[2];
-    const channelNumber = data[3];
-    const flag          = data[12];
-    const deviceNumber  = (data[14] << 8) + (data[13]);
-    const deviceType    = data[15];
-    const transType     = data[16];
-    return { deviceNumber, deviceType, transType };
-}
+function LibConfig() {
+    const sync          = values.sync;
+    const fixedLength   = 4;
+    const contentLength = 2;
+    const totalLength   = fixedLength + contentLength;
+    const id            = ids.libConfig; // 110, 0x6E
 
-function readChannelStatus(data) {
-    const id             = 82; // 0x52
-    const channelNumber  = data[3];
-    const status         = data[4] & 0b00000011; // just bits 0 and 1
-    let res              = 'unknown';
-    if(status === 0) res = 'unassigned';
-    if(status === 1) res = 'assigned';
-    if(status === 2) res = 'searching';
-    if(status === 3) res = 'tracking';
-    return res;
-}
+    const defaults = {
+        config: values.libConfig.disabled
+    };
 
-function readChannelId(data) {
-    const id            = 81; // 0x51
-    const channelNumber = data[3];
-    const deviceNumber  = (data[5] << 8) + data[4];
-    const deviceType    = data[6];
-    const transType     = data[7];
-    return { channelNumber, deviceNumber, deviceType, transType };
-}
+    function encode(args = {}) {
+        let buffer   = new ArrayBuffer(totalLength);
+        let view     = new DataView(buffer);
 
-function readANTVersion(data) {
-    const id      = 62; // 0x3E
-    const version = arrayToString(data.slice(3));
-    return { version };
-}
+        const config = existance(args.config, defaults.config);
 
-function readSerialNumber(data) {
-    const id = 97; // 0x61
-    const sn = data.slice(3);
-    return { sn };
-}
+        view.setUint8(0, sync,          true);
+        view.setUint8(1, contentLength, true);
+        view.setUint8(2, id,            true);
+        view.setUint8(3, 0,             true);
+        view.setUint8(4, config,        true);
 
-function readCapabilities(data) {
-    const id               = 84; // 0x54
-    const maxAntChannels   = data[3];
-    const maxNetworks      = data[4];
-    const standardOptions  = data[5];
-    const advancedOptions  = data[6];
-    const advancedOptions2 = data[7];
-    const maxSensRcore     = data[8];
-    const advancedOptions3 = data[9];
-    const advancedOptions4 = data[10];
-    return { maxAntChannels,
-             maxNetworks,
-             standardOptions,
-             advancedOptions,
-             advancedOptions2,
-             maxSensRcore,
-             advancedOptions3,
-             advancedOptions4};
-}
+        view.setUint8(totalLength - 1, xor(view), true);
 
-function readSync(msg) {
-    return msg[0];
-}
-function readLength(msg) {
-    return msg[1];
-}
-function readId(msg) {
-    return msg[2];
-}
-function readChannel(msg) {
-    return msg[3];
-}
-
-function isValidEventCode(code) {
-    return Object.values(events).includes(code);
-}
-function eventCodeToString(code) {
-    if(!isValidEventCode(code)) {
-        return `invalid event code`;
+        return view;
     }
-    const prop = Object.entries(events)
-          .filter(e => e[1] === code)[0][0];
-    const str  = prop.split('_').join(' ');
-    return `${str}`;
+
+    return Object.freeze({ encode, values });
 }
 
-function isValidId(id) {
-    return Object.values(ids).includes(id);
-}
-function idToString(id) {
-    if(!isValidId(id)) {
-        return `invalid message id`;
+function Data(args) {
+    const sync          = values.sync;
+    const fixedLength   = 4;
+    const contentLength = 9;
+    const payloadLength = contentLength - 1;
+    const id            = args.typeId;
+
+    const payloadIndex      = 4;
+    const extendedDataIndex = payloadIndex + (contentLength - 1);
+
+    function TotalLength(extended) {
+        let extendedDataLength = 0;
+        if(exists(extended)) extendedDataLength = extended.byteLength;
+        return fixedLength + contentLength + extendedDataLength;
     }
-    const prop = Object.entries(ids).filter(e => e[1] === id)[0][0];
-    const str  = prop.split('_').join(' ');
-    return `${str}`;
-}
 
-function readResponse(msg) {
-    // response to write
-    const channel = readChannel(msg);
-    const id      = readId(msg);
-    const toId    = msg[4];
-    const code    = msg[5];
-    return { channel, id, toId, code };
-}
-function readEvent(msg) {
-    const channel = readChannel(msg);
-    const code    = msg[5];
-    return { channel, code };
-}
-
-
-function isResponse(msg) {
-    return readId(msg) === ids.channelResponse;
-}
-function isRequestedResponse(msg) {
-    return [ids.channelId,
-            ids.channelStatus,
-            ids.ANTVersion,
-            ids.capabilities,
-            ids.serialNumber
-           ].includes(readId(msg));
-}
-function isBroadcast(msg) {
-    return readId(msg) === ids.broascastData;
-}
-function isBroadcastExt(msg) {
-    return readId(msg) === ids.broascastExtData;
-}
-function isAcknowledged(msg) {
-    return readId(msg) === ids.acknowledgedData;
-}
-function isBurst(msg) {
-    return readId(msg) === ids.burstData;
-}
-function isBurstAdv(msg) {
-    return readId(msg) === ids.burstAdvData;
-}
-function isEvent(msg) {
-    return readId(msg) === ids.channelEvent;
-}
-function isSerialError(msg) {
-    return readId(msg) === ids.serialError;
-}
-function isChannelId(msg) {
-    return ids.channelId === readId(msg);
-}
-function isChannelStatus(msg) {
-    return ids.channelStatus === readId(msg);
-}
-function isANTVersion(msg) {
-    return ids.ANTVersion === readId(msg);
-}
-function isCapabilities(msg) {
-    return ids.capabilities === readId(msg);
-}
-function isSerialNumber(msg) {
-    return ids.serialNumber === readId(msg);
-}
-
-function startsWithSync(msg) {
-    return readSync(msg) === 0xA4;
-}
-function isFullMsg(msg) {
-    if(msg === undefined) return false;
-    if(msg.length > 1) {
-        return msg.length === (readLength(msg) + 4);
+    function XorIndex(totalLength) {
+        return totalLength - 1;
     }
-    return false;
+
+    const defaults = {
+        channelNumber: 0,
+        payload:       new Uint8Array(new ArrayBuffer(payloadLength)),
+    };
+
+    function encode(args = {}) {
+        const totalLength = TotalLength(args.extended);
+        const xorIndex    = XorIndex(totalLength);
+
+        const channelNumber = existance(args.channelNumber, defaults.channelNumber);
+        const payload       = existance(args.payload,       defaults.payload);
+
+        let buffer = new ArrayBuffer(totalLength);
+        let view   = new DataView(buffer);
+        let uint8  = new Uint8Array(buffer);
+
+        view.setUint8(0, sync,          true);
+        view.setUint8(1, contentLength, true);
+        view.setUint8(2, id,            true);
+        view.setUint8(3, channelNumber, true);
+
+        uint8.set(new Uint8Array(payload.buffer), payloadIndex);
+
+        if(exists(args.extended)) {
+            uint8.set(new Uint8Array((args.extended).buffer), extendedDataIndex);
+        }
+
+        view.setUint8(xorIndex, xor(view), true);
+
+        return view;
+    }
+
+    return Object.freeze({ encode, TotalLength });
 }
 
-function isValid(data) {
-    if(!startsWithSync(data)) return false;
-    if(!isFullMsg(data))      return false;
-    return true;
+function BroadcastData() {
+    const id = ids.broadcastData; // 78, 0x4E
+    return Data({typeId: id});
 }
+
+function AcknowledgedData() {
+    const id = ids.acknowledgedData; // 79, 0x4F
+    return Data({typeId: id});
+}
+
+function BurstTransferData() {
+    throw new Error('not implemented');
+}
+
+function AdvancedBurstData() {
+    throw new Error('not implemented');
+}
+
+
+
+
+// function CommonPage70(pageNumber) {
+//     let buffer          = new ArrayBuffer(8);
+//     let view            = new DataView(buffer);
+//     const commandId     = 70; // 0x46, Data Page Request
+//     const transResponse = 2;  // 0b00000010
+//     const commandType   = 1;
+
+//     view.setUint8(0, commandId,     true);
+//     view.setUint8(1, 255,           true);
+//     view.setUint8(2, 255,           true);
+//     view.setUint8(3, 255,           true);
+//     view.setUint8(4, 255,           true);
+//     view.setUint8(5, transResponse, true);
+//     view.setUint8(6, pageNumber,    true);
+//     view.setUint8(7, commandType,   true);
+
+//     return view;
+// }
+
+
+
+
 
 function deviceTypeToString(deviceType) {
     if(equals(deviceType, 120)) return 'Heart Rate';
@@ -741,10 +667,31 @@ function deviceTypeToString(deviceType) {
 
 
 const message = {
-    setNetworkKey:    SetNetworkKey(),
-    assignChannel:    AssignChannel(),
-    setChannelId:     SetChannelId(),
-    channelFrequency: ChannelFrequency(),
+    // config
+    assignChannel:            AssignChannel(),
+    unassignChannel:          UnassignChannel(),
+    setChannelId:             SetChannelId(),
+    setChannelPeriod:         SetChannelPeriod(),
+    setChannelFrequency:      SetChannelFrequency(),
+    setNetworkKey:            SetNetworkKey(),
+    searchTimeout:            SearchTimeout(),
+    enableExtRxMessages:      EnableExtRxMessages(),
+    libConfig:                LibConfig(),
+    lowPrioritySearchTimeout: LowPrioritySearchTimeout(),
+
+    // control
+    resetSystem:         ResetSystem(),
+    openChannel:         OpenChannel(),
+    closeChannel:        CloseChannel(),
+    requestMessage:      RequestMessage(),
+    openRxScanMode:      OpenRxScanMode(),
+    sleep:               Sleep(),
+
+    // data
+    broadcastData:       BroadcastData(),
+    acknowledgedData:    AcknowledgedData(),
+    burstTransferData:   BurstTransferData(),
+    advancedBurstData:   AdvancedBurstData(),
 };
 
 const utils = {
