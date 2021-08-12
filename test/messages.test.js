@@ -380,8 +380,183 @@ describe('Acknowledged Data Messsage', () => {
 
 });
 
+describe('Channel Event Message', () => {
+
+    describe('encode', () => {
+        test('on channel 1 response no error', () => {
+            let msg = message.channelEvent.encode({channelNumber: 1, eventCode: 0});
+            expect(dataviewToArray(msg)).toEqual([164, 3, 64, 1, 1, 0, 231]);
+        });
+    });
+});
+
+describe('Channel Response Message', () => {
+
+    describe('encode', () => {
+        test('on channel 1 for message id 82 response no error', () => {
+            let msg = message.channelResponse.encode({channelNumber: 1, initMsgId: 82, responseCode: 0});
+            expect(dataviewToArray(msg)).toEqual([164, 3, 64, 1, 82, 0, 180]);
+        });
+    });
+});
+
+describe('Channel Status Message', () => {
+
+    describe('encode', () => {
+        test('default message (unassigned)', () => {
+            let msg = message.channelStatus.encode();
+            expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 0, 244]);
+        });
+
+        test('sets channel number', () => {
+            let msg = message.channelStatus.encode({channelNumber: 1});
+            expect(dataviewToArray(msg)).toEqual([164, 2, 82, 1, 0, 245]);
+        });
+
+        test('sets channel state (assigned)', () => {
+            let msg = message.channelStatus.encode({channelState: 1});
+            expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 1, 245]);
+        });
+
+        test('sets channel state and network number', () => {
+            let msg = message.channelStatus.encode({channelState: 2, networkNumber: 1});
+            expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 6, 242]);
+        });
+    });
+});
+
+describe('Channel Status Messsage', () => {
+
+    describe('default message', () => {
+        let msg = message.channelStatus.encode();
+
+        expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 0, 244]);
+    });
+
+    describe('channel: assigned, number 1,', () => {
+        let msg = message.channelStatus.encode({channelNumber: 1, channelState: 1});
+
+        expect(dataviewToArray(msg)).toEqual([164, 2, 82, 1, 1, 244]);
+    });
+
+    describe('channel: searching, number 0,', () => {
+        let msg = message.channelStatus.encode({channelNumber: 0, channelState: 2});
+
+        expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 2, 246]);
+    });
+
+    describe('channel: tracking, number 0,', () => {
+        let msg = message.channelStatus.encode({channelNumber: 0, channelState: 3});
+
+        expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 3, 247]);
+    });
+});
+
+describe('Capabilities Message', () => {
+
+    describe('encode options', () => {
+        test('encode standard options', () => {
+            expect(message.capabilities.encodeStandardOptions({
+                no_receive_channels:  false,
+                no_transmit_channels: false,
+                no_receive_messages:  false,
+                no_transmit_messages: false,
+                no_ackd_messages:     false,
+                no_burst_messages:    true,
+                // ...
+            })).toBe(0b00100000);
+
+            expect(message.capabilities.encodeStandardOptions({
+                no_receive_channels:  false,
+                no_transmit_channels: true,
+                no_receive_messages:  false,
+                no_transmit_messages: true,
+                no_ackd_messages:     true,
+                no_burst_messages:    true,
+                // ...
+            })).toBe(0b00111010);
+        });
+    });
+
+    describe('encode', () => {
+        test('default message', () => {
+            const capabilities = {
+                // Standart Options
+                no_receive_channels:  false,
+                no_transmit_channels: false,
+                no_receive_messages:  false,
+                no_transmit_messages: false,
+                no_ackd_messages:     false,
+                no_burst_messages:    false,
+                // Advanced Options
+                network_enabled:              false,
+                serial_number_enabled:        false,
+                per_channel_tx_power_enabled: false,
+                low_priority_search_enabled:  false,
+                script_enabled:               false,
+                search_list_enabled:          false,
+                // Advanced Options 2
+                led_enabled:         false,
+                ext_message_enabled: false,
+                scan_mode_enabled:   false,
+                prox_search_enabled: false,
+                ext_assign_enabled:  false,
+                fs_antfs_enabled:    false,
+                fit1_enabled:        false,
+                // Advanced Options 3
+                advanced_burst_enabled:         false,
+                event_buffering_enabled:        false,
+                event_filtering_enabled:        false,
+                high_duty_search_enabled:       false,
+                search_sharing_enabled:         false,
+                selective_data_updates_enabled: false,
+                encrypted_channel_enabled:      false,
+                // Advanced Options 4
+                capabilities_rfactive_notification_enabled: false,
+            };
+
+            let msg = message.capabilities.encode(Object.assign(capabilities, {maxChannels: 8, maxNetworks: 1, maxSensRcore: 1}));
+
+            expect(dataviewToArray(msg)).toEqual([164, 8, 84,  8, 1, 0, 0, 0, 1, 0, 0, 240]);
+        });
+    });
+
+});
+
+describe('Serial Number Message', () => {
+
+    describe('encode', () => {
+        test('default message', () => {
+            const sn = 1251800828;
+
+            let msg = message.serialNumber.encode({serialNumber: sn});
+            expect(dataviewToArray(msg)).toEqual([164, 4, 97,  252,246,156,74, 29]);
+        });
+    });
+
+});
 
 
+
+describe('Data Page 16 (General FE Data)', () => {
+
+    describe('encode', () => {
+        test('default', () => {
+
+            // let msg = fec.dataPage16.encode();
+            // expect(dataviewToArray(msg)).toEqual([164,]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+
+            // fec.dataPage16.decode([]);
+            // expect(dataviewToArray(msg)).toEqual([164,]);
+        });
+    });
+
+});
 
 // describe('', () => {
 

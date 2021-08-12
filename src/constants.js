@@ -33,8 +33,7 @@ const ids = {
     burstAdvData:     114, // 0x72
 
     // channel
-    // channelEvent:     64, // 0x40
-    channelEvent:      1, // 0x01
+    channelEvent:     64, // 0x40
     channelResponse:  64, // 0x40
 
     // requested response
@@ -65,7 +64,7 @@ const events = {
     transfer_in_progress:            31,
     transfer_sequence_number_error:  32,
     transfer_in_error:               33,
-    message_size_exceeds_limit:      34,
+    message_size_exceeds_limit:      39,
     invalid_message:                 40,
     invalid_network_number:          41,
     invalid_list_id:                 48,
