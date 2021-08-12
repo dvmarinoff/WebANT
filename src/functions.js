@@ -135,12 +135,33 @@ function traverse(obj, fn = ((x) => x), acc = []) {
     return recur(fn, obj, Object.keys(obj), acc);
 }
 
-const repeat = n => f => x => {
-    if (n > 0)
-        return repeat (n - 1) (f) (f (x));
-    else
-        return x;
+// Functions
+function compose2(f, g) {
+    return function(...args) {
+        return f(g(...args));
+    };
+}
+
+function compose(...fns) {
+    return fns.reduce(compose2);
+}
+
+function pipe(...fns) {
+    return fns.reduceRight(compose2);
+}
+
+function repeat(n) {
+    return function(f) {
+        return function(x) {
+            if (n > 0) {
+                return repeat(n - 1)(f)(f(x));
+            } else {
+                return x;
+            }
+        };
+    };
 };
+
 
 // Util
 function timestampDiff(timestamp1, timestamp2) {
