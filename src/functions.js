@@ -1,3 +1,6 @@
+//
+// A collection of common functions that makes JS more functional
+//
 
 // Values
 function equals(a, b) {
@@ -23,7 +26,10 @@ function existance(value, fallback) {
     throw new Error(`existance needs a fallback value `, value);
 }
 
-// Collections
+function isFunction(x) {
+    return equals(typeof x, 'function');
+}
+
 function isArray(x) {
     return Array.isArray(x);
 }
@@ -40,6 +46,15 @@ function isString(x) {
     return equals(typeof x, 'string');
 }
 
+function isNumber(x) {
+    return equals(typeof x, 'number');
+}
+
+function isAtomic(x) {
+    return isNumber(x) || isString(x);
+}
+
+// Collections
 function empty(x) {
     if(isNull(x)) throw new Error(`empty called with null: ${x}`);
     if(!isCollection(x) && !isString(x) && !isUndefined(x)) {
@@ -96,20 +111,14 @@ function last(xs) {
     return xs[xs.length - 1];
 }
 
-function getIn(...args) {
-    let [collection, ...path] = args;
-    return path.reduce((acc, key) => {
-        if(acc[key]) return acc[key];
-        console.warn(`:getIn 'no such key' :key ${key}`);
-        return undefined;
-    }, collection);
-}
-
 function map(coll, fn) {
     if(isArray(coll)) return coll.map(fn);
     if(isObject(coll)) {
         return Object.fromEntries(
             Object.entries(coll).map(([k, v], i) => [k, (fn(v, k, i))]));
+    }
+    if(isString(coll)) {
+        return coll.split('').map(fn).join('');
     }
     throw new Error(`map called with unkown collection `, coll);
 }
@@ -133,6 +142,57 @@ function traverse(obj, fn = ((x) => x), acc = []) {
         }
     }
     return recur(fn, obj, Object.keys(obj), acc);
+}
+
+function getIn(...args) {
+    let [collection, ...path] = args;
+    return path.reduce((acc, key) => {
+        if(exists(acc[key])) return acc[key];
+        return undefined;
+    }, collection);
+}
+
+function set(coll, k, v) {
+    coll = (coll || {});
+    coll[k] = v;
+    return coll;
+}
+
+function setIn(coll={}, [k, ...keys], v) {
+    return keys.length ? set(coll, k, setIn(coll[k], keys, v)) : set(coll, k, v);
+}
+
+
+function avg(xs, prop = false) {
+    if(prop !== false) {
+        return xs.reduce( (acc,v,i) => acc+(v[prop]-acc)/(i+1), 0);
+    } else {
+        return xs.reduce( (acc,v,i) => acc+(v-acc)/(i+1), 0);
+    }
+}
+
+function max(xs, prop = false) {
+    if(prop !== false) {
+        return xs.reduce( (acc,v,i) => v[prop] > acc ? v[prop] : acc, 0);
+    } else {
+        return xs.reduce( (acc,v,i) => v > acc ? v : acc, 0);
+    }
+};
+
+function sum(xs, path = false) {
+    if(path !== false) {
+        return xs.reduce( (acc,v,i) => acc + v[path], 0);
+    } else {
+        return xs.reduce( (acc,v,i) => acc + v, 0);
+    }
+};
+
+function rand(min = 0, max = 10) {
+    return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+function capitalize(str) {
+    return str.trim().replace(/^\w/, (c) => c.toUpperCase());
 }
 
 // Functions
@@ -162,56 +222,139 @@ function repeat(n) {
     };
 };
 
-
-// Util
-function timestampDiff(timestamp1, timestamp2) {
-    let difference = (timestamp1 / 1000) - (timestamp2 / 1000);
-    return Math.round(Math.abs(difference));
-};
-
-const garmin_epoch = Date.parse('31 Dec 1989 00:00:00 GMT');
-
-function toFitTimestamp(timestamp) {
-    return Math.round((timestamp - garmin_epoch) / 1000);
+function curry2(fn) {
+    return function (arg1, arg2) {
+        if(exists(arg2)) {
+            return fn(arg1, arg2);
+        } else {
+            return function(arg2) {
+                return fn(arg1, arg2);
+            };
+        }
+    };
 }
 
-function toJsTimestamp(fitTimestamp) {
-    return (fitTimestamp * 1000) + garmin_epoch;
+// Async
+function delay(ms) {
+    return new Promise(res => setTimeout(res, ms));
 }
 
-function now() {
-    return toFitTimestamp(Date.now());
+// XF (Events)
+function XF(args = {}) {
+    let data = {};
+    let name = args.name || 'db';
+
+    function create(obj) {
+        data = proxify(obj);
+    }
+
+    function proxify(obj) {
+        let handler = {
+            set: (target, key, value) => {
+                target[key] = value;
+                dispatch(`${name}:${key}`, target);
+                return true;
+            }
+        };
+        return new Proxy(obj, handler);
+    }
+
+    function dispatch(eventType, value) {
+        window.dispatchEvent(evt(eventType)(value));
+    }
+
+    function sub(eventType, handler, element = false) {
+        if(element) {
+            element.addEventListener(eventType, handler, true);
+            return handler;
+        } else {
+            function handlerWraper(e) {
+                if(isStoreSource(eventType)) {
+                    handler(e.detail.data[evtProp(eventType)]);
+                } else {
+                    handler(e.detail.data);
+                }
+            }
+
+            window.addEventListener(eventType, handlerWraper, true);
+
+            return handlerWraper;
+        }
+    }
+
+    function reg(eventType, handler) {
+        window.addEventListener(eventType, e => handler(e.detail.data, data));
+    }
+
+    function unsub(eventType, handler, element = false) {
+        if(element) {
+            element.removeEventListener(eventType, handler, true);
+        } else {
+            window.removeEventListener(eventType, handler, true);
+        }
+    }
+
+    function isStoreSource(eventType) {
+        return equals(evtSource(eventType), name);
+    }
+
+    function evt(eventType) {
+        return function(value) {
+            return new CustomEvent(eventType, {detail: {data: value}});
+        };
+    }
+
+    function evtProp(eventType) {
+        return second(eventType.split(':'));
+    }
+
+    function evtSource(eventType) {
+        return first(eventType.split(':'));
+    }
+
+    return Object.freeze({
+        create,
+        reg,
+        sub,
+        dispatch,
+        unsub
+    });
 }
+
+const xf = XF();
 
 // Bits
+function nthBit(field, bit) {
+    return (field >> bit) & 1;
+};
+
+function bitToBool(bit) {
+    return !!(bit);
+};
+
+function nthBitToBool(field, bit) {
+    return bitToBool(nthBit(field, bit));
+}
+
 function dataviewToArray(dataview) {
     return Array.from(new Uint8Array(dataview.buffer));
 }
 
-function nthBit(field, bit) {
-    return (field >> bit) & 1;
-};
-function bitToBool(bit) {
-    return !!(bit);
-};
-function nthBitToBool(field, bit) {
-    return bitToBool(nthBit(field, bit));
-}
-function xor(view) {
-    let cs = 0;
-    for (let i=0; i < view.byteLength; i++) {
-        cs ^= view.getUint8(i);
-    }
-    return cs;
+function dataviewToString(dataview) {
+    let utf8decoder = new TextDecoder('utf-8');
+    return utf8decoder.decode(dataview.buffer);
 }
 
-function getUint16(uint8array, index = 0, endianness = true) {
-    let dataview = new DataView(uint8array.buffer);
-    return dataview.getUint16(index, dataview, endianness);
+function stringToCharCodes(str) {
+    return str.split('').map(c => c.charCodeAt(0));
 }
-function getUint32(uint8array, index = 0, endianness = true) {
-    let dataview = new DataView(uint8array.buffer);
-    return dataview.getUint32(index, dataview, endianness);
+
+function stringToDataview(str) {
+    let charCodes = stringToCharCodes(str);
+    let uint8 = new Uint8Array(charCodes);
+    let dataview = new DataView(uint8.buffer);
+
+    return dataview;
 }
 
 function fromUint16(n) {
@@ -234,142 +377,66 @@ function toUint8Array(n, type) {
     return n;
 }
 
-// FIT
-function calculateCRC(uint8array, start, end) {
-    const crcTable = [
-        0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
-        0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400,
-    ];
-
-    let crc = 0;
-    for (let i = start; i < end; i++) {
-        const byte = uint8array[i];
-        let tmp = crcTable[crc & 0xF];
-        crc = (crc >> 4) & 0x0FFF;
-        crc = crc ^ tmp ^ crcTable[byte & 0xF];
-        tmp = crcTable[crc & 0xF];
-        crc = (crc >> 4) & 0x0FFF;
-        crc = crc ^ tmp ^ crcTable[(byte >> 4) & 0xF];
+function xor(view) {
+    let cs = 0;
+    for (let i=0; i < view.byteLength; i++) {
+        cs ^= view.getUint8(i);
     }
-
-    return crc;
+    return cs;
 }
-
-function XF(args = {}) {
-    let data = {};
-    let name = args.name || 'db';
-
-    function create(obj) {
-        data = proxify(obj);
-    }
-
-    function proxify(obj) {
-        let handler = {
-            set: (target, key, value) => {
-                target[key] = value;
-                dispatch(`${name}:${key}`, target);
-                return true;
-            }
-        };
-        return new Proxy(obj, handler);
-    }
-
-    function dispatch(eventType, value) {
-        document.dispatchEvent(evt(eventType)(value));
-    }
-
-    function sub(eventType, handler, element = false) {
-        if(element) {
-            element.addEventListener(eventType, handler, true);
-            return handler;
-        } else {
-            function handlerWraper(e) {
-                if(isStoreSource(eventType)) {
-                    handler(e.detail.data[evtProp(eventType)]);
-                } else {
-                    handler(e.detail.data);
-                }
-            }
-
-            document.addEventListener(eventType, handlerWraper, true);
-
-            return handlerWraper;
-        }
-    }
-
-    function reg(eventType, handler) {
-        document.addEventListener(eventType, e => handler(e.detail.data, data));
-    }
-
-    function unsub(eventType, handler, element = false) {
-        if(element) {
-            element.removeEventListener(eventType, handler, true);
-        } else {
-            document.removeEventListener(eventType, handler, true);
-        }
-    }
-
-    function isStoreSource(eventType) {
-        return equals(evtSource(eventType), name);
-    }
-
-    function evt(eventType) {
-        return function(value) {
-            return new CustomEvent(eventType, {detail: {data: value}});
-        };
-    }
-
-    function evtProp(eventType) {
-        return second(eventType.split(':'));
-    }
-
-    function evtSource(eventType) {
-        return first(eventType.split(':'));
-    }
-
-    return Object.freeze({ create, reg, sub, dispatch, unsub });
-}
-
-const xf = XF();
 
 export {
     // values
     equals,
     isNull,
     isUndefined,
+    isFunction,
     exists,
     existance,
-
-    // collections
     isArray,
     isObject,
     isString,
     isCollection,
+    isNumber,
+    isAtomic,
+
+    // collections
     first,
     second,
     third,
     last,
     empty,
-    getIn,
     map,
     traverse,
+    getIn,
+    set,
+    setIn,
+    avg,
+    max,
+    sum,
+    rand,
+    capitalize,
+
+    // functions
+    compose,
+    pipe,
     repeat,
+    curry2,
 
-    // Util
-    timestampDiff,
-    toFitTimestamp,
-    toJsTimestamp,
-    now,
+    // async
+    delay,
 
-    // Bits
-    dataviewToArray,
+    // events
+    xf,
+
+    // bits
     nthBit,
+    bitToBool,
     nthBitToBool,
+    dataviewToArray,
+    dataviewToString,
+    stringToCharCodes,
     toUint8Array,
-    getUint16,
-    getUint32,
     xor,
+};
 
-    // XF
-    xf
-}
