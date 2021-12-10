@@ -6,11 +6,8 @@ function DataPage(args = {}) {
         length: 8,
     };
 
-    const number      = existance(args.number);
     const length      = existance(args.length, defaults.length);
     const definitions = existance(args.definitions);
-    const encode      = existance(args.encode);
-    const decode      = existance(args.decode, ((x) => x));
 
     const applyResolution = curry2((prop, value) => {
         return value / definitions[prop].resolution;
@@ -35,13 +32,10 @@ function DataPage(args = {}) {
     }
 
     return {
-        number,
-        definitions,
+        length,
         applyResolution,
         applyOffset,
         encodeField,
-        encode,
-        decode,
     };
 }
 
@@ -55,26 +49,30 @@ function DataPage48() {
         },
     };
 
+    const data   = DataPage({definitions});
+    const length = data.length;
+
     function encode(args = {}) {
-        const resistance = encodeField('resistance', args.resistance);
+        const resistance = data.encodeField('resistance', args.resistance);
 
         const buffer = new ArrayBuffer(length);
         const view   = new DataView(buffer);
 
-        view.setUint8(0, number, true);
-        view.setUint8(6, resistance,  true);
+        view.setUint8(0, number,     true);
+        view.setUint8(6, resistance, true);
 
         return view;
     }
 
     function decode(args = {}) {}
 
-    return Object.freeze(DataPage({
+    return Object.freeze({
         number,
+        length,
         definitions,
         encode,
         decode,
-    }));
+    });
 }
 
 function DataPage49() {
@@ -87,8 +85,11 @@ function DataPage49() {
         },
     };
 
+    const data   = DataPage({definitions});
+    const length = data.length;
+
     function encode(args = {}) {
-        const power = encodeField('power', args.power);
+        const power = data.encodeField('power', args.power);
 
         const buffer = new ArrayBuffer(length);
         const view   = new DataView(buffer);
@@ -101,12 +102,13 @@ function DataPage49() {
 
     function decode(args = {}) {}
 
-    return Object.freeze(DataPage({
+    return Object.freeze({
         number,
+        length,
         definitions,
         encode,
         decode,
-    }));
+    });
 }
 
 function DataPage50() {
@@ -137,6 +139,9 @@ function DataPage50() {
         },
     };
 
+    const data   = DataPage({definitions});
+    const length = data.length;
+
     function calcWindRasistance(args = {}) {
         // WindResistanceCoefficient = FrontalSurfaceArea * DragCoefficient * AirDensity
         const frontalArea = existance(args.frontalArea, values.frontalArea.roadTouring);
@@ -151,9 +156,9 @@ function DataPage50() {
     // applyOffset('WindSpeed', 20) -> 147
 
     function encode(args = {}) {
-        const windResistance = encodeField('windResistance', args.windResistance);
-        const windSpeed      = encodeField('windSpeed', args.windSpeed, applyOffset('windSpeed'));
-        const draftingFactor = encodeField('draftingFactor', args.draftingFactor);
+        const windResistance = data.encodeField('windResistance', args.windResistance);
+        const windSpeed      = data.encodeField('windSpeed', args.windSpeed, data.applyOffset('windSpeed'));
+        const draftingFactor = data.encodeField('draftingFactor', args.draftingFactor);
 
         const buffer = new ArrayBuffer(length);
         const view   = new DataView(buffer);
@@ -168,11 +173,15 @@ function DataPage50() {
 
     function decode(args = {}) {}
 
-    return Object.freeze(
-        Object.assign(
-            DataPage({number, definitions, encode, decode,}),
-            values, calcWindRasistance,
-        ));
+    return Object.freeze({
+        number,
+        length,
+        definitions,
+        values,
+        calcWindRasistance,
+        encode,
+        decode,
+    });
 }
 
 function DataPage51(args = {}) {
@@ -195,9 +204,12 @@ function DataPage51(args = {}) {
     // applyOffset('grade', 1)   -> 20100
     // applyOffset('grade', 4.5) -> 20450
 
+    const data   = DataPage({definitions});
+    const length = data.length;
+
     function encode(args = {}) {
-        const grade = encodeField('grade', args.grade, applyOffset('grade'));
-        const crr   = encodeField('crr', args.crr);
+        const grade = data.encodeField('grade', args.grade, data.applyOffset('grade'));
+        const crr   = data.encodeField('crr', args.crr);
 
         const buffer = new ArrayBuffer(length);
         const view   = new DataView(buffer);
@@ -209,11 +221,15 @@ function DataPage51(args = {}) {
         return view;
     }
 
-    return Object.freeze(DataPage({
+    function decode(args = {}) {}
+
+    return Object.freeze({
         number,
+        length,
         definitions,
         encode,
-    }));
+        decode,
+    });
 }
 
 function DataPage55(args = {}) {
@@ -228,12 +244,15 @@ function DataPage55(args = {}) {
         gearRatio:      {resolution: 0.03, unit: '',   min: 3, max: 7.65,   invalid: 0x00,   default: 0x00},
     };
 
+    const data   = DataPage({definitions});
+    const length = data.length;
+
     function encode(args = {}) {
-        const userWeight     = encodeField('userWeight', args.userWeight);
-        const diameterOffset = encodeField('diameterOffset', args.diameterOffset);
-        const bikeWeight     = encodeField('bikeWeight', args.bikeWeight);
-        const wheelDiameter  = encodeField('wheelDiameter', args.wheelDiameter);
-        const gearRatio      = encodeField('gearRatio', args.gearRatio);
+        const userWeight     = data.encodeField('userWeight', args.userWeight);
+        const diameterOffset = data.encodeField('diameterOffset', args.diameterOffset);
+        const bikeWeight     = data.encodeField('bikeWeight', args.bikeWeight);
+        const wheelDiameter  = data.encodeField('wheelDiameter', args.wheelDiameter);
+        const gearRatio      = data.encodeField('gearRatio', args.gearRatio);
 
         const bikeWeightMSN = bikeWeight & 0b111111110000;
         const bikeWeightLSN = bikeWeight & 0b000000001111;
@@ -252,11 +271,15 @@ function DataPage55(args = {}) {
         return view;
     }
 
-    return Object.freeze(DataPage({
+    function decode(args = {}) {}
+
+    return Object.freeze({
         number,
+        length,
         definitions,
         encode,
-    }));
+        decode,
+    });
 }
 
 function DataPage16() {
@@ -277,6 +300,9 @@ function DataPage16() {
             resolution: 1, unit: 'bpm', min: 0, max: 254, invalid: 0xFF, default: 0
         },
     };
+
+    const data   = DataPage({definitions});
+    const length = data.length;
 
     function numberToEquipmentType(number) {
         if(equals(number, 19)) return 'Treadmill';
@@ -299,7 +325,7 @@ function DataPage16() {
     };
 
     function encodeEquipmentType(args = {}) {
-        return 0b00000000;
+        return equipmentTypesToNumber(args.equipmentType);
     }
 
     function encodeCapabilities(args = {}) {
@@ -312,10 +338,10 @@ function DataPage16() {
 
     function encode(args = {}) {
         const equipmentType = encodeEquipmentType(args.equipmentType);
-        const elapsedTime   = encodeField('elapsedTime', args.elapsedTime);
-        const distance      = encodeField('distance', args.distance);
-        const speed         = encodeField('speed', args.speed);
-        const heartRate     = encodeField('heartRate', args.heartRate);
+        const elapsedTime   = data.encodeField('elapsedTime', args.elapsedTime);
+        const distance      = data.encodeField('distance', args.distance);
+        const speed         = data.encodeField('speed', args.speed);
+        const heartRate     = data.encodeField('heartRate', args.heartRate);
         const capabilities  = encodeCapabilities(args.capabilities);
         const FEState       = encodeFEState(args.feState);
 
@@ -335,24 +361,51 @@ function DataPage16() {
         return view;
     }
 
-    function decode(view) {
-
-        let pageNumber             = view.getUint8( 0, true);
-        let equipmentType          = view.getUint8( 1, true);
-        let elapsedTime            = view.getUint8( 2, true);
-        let speed                  = view.getUint16(3, true);
-        let heartRate              = view.getUint8( 5, true);
-        let capabilitiesAndFEState = view.getUint8( 6, true);
-        let xor                    = view.getUint8( 7, true);
-
-        // equipmentType = numberToEquipmentType(equipmentType & 0b00011111);
-        // elapsedTime   = elapsedTime * elapsedTimeUnit;
-        // speed         = speed * speedUnit * 3.6;
-
-        return { pageNumber, equipmentType, elapsedTime, speed, heartRate, capabilitiesAndFEState };
+    function decodeEquipmentType(value) {
+        return numberToEquipmentType(value & 0b00011111);
     }
 
-    return Object.freeze({ encode, decode });
+    function decode(view) {
+        const number        = view.getUint8( 0, true);
+        const equipmentType = view.getUint8( 1, true);
+        const elapsedTime   = view.getUint8( 2, true);
+        const speed         = view.getUint16(3, true);
+        const heartRate     = view.getUint8( 5, true);
+        const xor           = view.getUint8( 7, true);
+
+        const combined      = view.getUint8( 6, true);
+        const capabilities  = 0;
+        const FEState       = 0;
+
+        // return {
+        //     equipmentType: decodeField('equipmentType', equipmentType),
+        //     speed:         decodeField('speed', speed),
+        // };
+
+        // elapsedTime   = elapsedTime * elapsedTimeUnit;
+        // speed         = speed * speedUnit * 3.6;
+        return {
+            number,
+            equipmentType,
+            elapsedTime,
+            speed,
+            heartRate,
+            capabilities,
+            FEState
+        };
+    }
+
+    return Object.freeze({
+        number,
+        length,
+        definitions,
+        encodeEquipmentType,
+        encodeCapabilities,
+        encodeFEState,
+        encode,
+        decode
+
+    });
 }
 
 const fec = {
