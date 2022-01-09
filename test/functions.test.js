@@ -8,6 +8,7 @@ import { exists,
          traverse,
          getIn,
          xf,
+         xor,
          toUint8Array,
          typeToAccessor} from '../src/functions.js';
 
@@ -290,4 +291,14 @@ describe('XF', () => {
 
 // getIn
 // toUint8Array
+describe('xor', () => {
+    test('default', () => {
+        const view = new DataView(new Uint8Array([164, 2, 82, 1, 80]).buffer);
+        expect(xor(view)).toBe(165);
+    });
 
+    test('-1', () => {
+        const view = new DataView(new Uint8Array([164, 2, 82, 1, 80]).buffer);
+        expect(xor(view, 0, -1)).toBe(245);
+    });
+});

@@ -1,8 +1,14 @@
 import { equals, dataviewToArray, nthBitToBool, xor } from '../src/functions.js';
 import { ids, events, channelTypes, values, keys } from '../src/constants.js';
 import { message } from '../src/message.js';
+import { DataPage } from '../src/common.js';
+import { fec } from '../src/fec.js';
 
-
+global.console = {
+    log: jest.fn(),
+    error: console.error,
+    warn: console.warn,
+};
 
 describe('Assaign Channel', () => {
 
@@ -34,7 +40,7 @@ describe('Assaign Channel', () => {
     });
 });
 
-describe('Unassaign Channel', () => {
+describe('UnassaignChannel', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -49,7 +55,7 @@ describe('Unassaign Channel', () => {
     });
 });
 
-describe('Set Channel Id', () => {
+describe('SetChannelId', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -73,13 +79,28 @@ describe('Set Channel Id', () => {
         });
 
         test('sets transmission type', () => {
-            let msg = message.setChannelId.encode({transType: 0x10});
+            let msg = message.setChannelId.encode({transmissionType: 0x10});
             expect(dataviewToArray(msg)).toEqual([164, 5, 81, 0, 0,0, 0, 16, 224]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default message', () => {
+            const msg = message.setChannelId.encode();
+            const res = message.setChannelId.decode(msg);
+            expect(res).toEqual({
+                id: 81,
+                channelNumber: 0,
+                deviceNumber: 0,
+                deviceType: 0,
+                transmissionType: 0,
+                valid: true,
+            });
         });
     });
 });
 
-describe('Set Channel Period', () => {
+describe('SetChannelPeriod', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -380,12 +401,42 @@ describe('Acknowledged Data Messsage', () => {
 
 });
 
-describe('Channel Event Message', () => {
+describe('ChannelEvent', () => {
 
     describe('encode', () => {
         test('on channel 1 response no error', () => {
             let msg = message.channelEvent.encode({channelNumber: 1, eventCode: 0});
             expect(dataviewToArray(msg)).toEqual([164, 3, 64, 1, 1, 0, 231]);
+        });
+    });
+
+    describe('decode', () => {
+        test('on channel 1 response no error', () => {
+            const msg = message.channelEvent.encode({
+                channelNumber: 1,
+                eventCode: 0
+            });
+            const res = message.channelEvent.decode(msg);
+            expect(res).toEqual({
+                id: 64,
+                channelNumber: 1,
+                eventCode: 0,
+                valid: true,
+            });
+        });
+
+        test('on channel 1 event rx fail', () => {
+            const msg = message.channelEvent.encode({
+                channelNumber: 1,
+                eventCode: 2
+            });
+            const res = message.channelEvent.decode(msg);
+            expect(res).toEqual({
+                id: 64,
+                channelNumber: 1,
+                eventCode: 2,
+                valid: true,
+            });
         });
     });
 });
@@ -394,8 +445,30 @@ describe('Channel Response Message', () => {
 
     describe('encode', () => {
         test('on channel 1 for message id 82 response no error', () => {
-            let msg = message.channelResponse.encode({channelNumber: 1, initMsgId: 82, responseCode: 0});
+            const msg = message.channelResponse.encode({
+                channelNumber: 1,
+                initMsgId: 82,
+                responseCode: 0
+            });
             expect(dataviewToArray(msg)).toEqual([164, 3, 64, 1, 82, 0, 180]);
+        });
+    });
+
+    describe('decode', () => {
+        test('on channel 1 for message id 82 response no error', () => {
+            const msg = message.channelResponse.encode({
+                channelNumber: 1,
+                initMsgId: 82,
+                responseCode: 0
+            });
+            const res = message.channelResponse.decode(msg);
+            expect(res).toEqual({
+                id: 64,
+                channelNumber: 1,
+                initMsgId: 82,
+                responseCode: 0,
+                valid: true,
+            });
         });
     });
 });
@@ -422,37 +495,38 @@ describe('Channel Status Message', () => {
             let msg = message.channelStatus.encode({channelState: 2, networkNumber: 1});
             expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 6, 242]);
         });
+
+        test('channel: assigned, number 1,', () => {
+            let msg = message.channelStatus.encode({channelNumber: 1, channelState: 1});
+            expect(dataviewToArray(msg)).toEqual([164, 2, 82, 1, 1, 244]);
+        });
+
+        test('channel: searching, number 0,', () => {
+            let msg = message.channelStatus.encode({channelNumber: 0, channelState: 2});
+            expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 2, 246]);
+        });
+
+        test('channel: tracking, number 0,', () => {
+            let msg = message.channelStatus.encode({channelNumber: 0, channelState: 3});
+            expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 3, 247]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default - unassigned', () => {
+            const msg = message.channelStatus.encode();
+            const res = message.channelStatus.decode(msg);
+            expect(res).toEqual({
+                id: 82,
+                channelNumber: 0,
+                status: 0,
+                valid: true,
+            });
+        });
     });
 });
 
-describe('Channel Status Messsage', () => {
-
-    describe('default message', () => {
-        let msg = message.channelStatus.encode();
-
-        expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 0, 244]);
-    });
-
-    describe('channel: assigned, number 1,', () => {
-        let msg = message.channelStatus.encode({channelNumber: 1, channelState: 1});
-
-        expect(dataviewToArray(msg)).toEqual([164, 2, 82, 1, 1, 244]);
-    });
-
-    describe('channel: searching, number 0,', () => {
-        let msg = message.channelStatus.encode({channelNumber: 0, channelState: 2});
-
-        expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 2, 246]);
-    });
-
-    describe('channel: tracking, number 0,', () => {
-        let msg = message.channelStatus.encode({channelNumber: 0, channelState: 3});
-
-        expect(dataviewToArray(msg)).toEqual([164, 2, 82, 0, 3, 247]);
-    });
-});
-
-describe('Capabilities Message', () => {
+describe('Capabilities', () => {
 
     describe('encode options', () => {
         test('encode standard options', () => {
@@ -478,46 +552,61 @@ describe('Capabilities Message', () => {
         });
     });
 
+    const capabilities = {
+        // Standart Options
+        no_receive_channels:  false,
+        no_transmit_channels: false,
+        no_receive_messages:  false,
+        no_transmit_messages: false,
+        no_ackd_messages:     false,
+        no_burst_messages:    false,
+        // Advanced Options
+        network_enabled:              false,
+        serial_number_enabled:        false,
+        per_channel_tx_power_enabled: false,
+        low_priority_search_enabled:  false,
+        script_enabled:               false,
+        search_list_enabled:          false,
+        // Advanced Options 2
+        led_enabled:         false,
+        ext_message_enabled: false,
+        scan_mode_enabled:   false,
+        prox_search_enabled: false,
+        ext_assign_enabled:  false,
+        fs_antfs_enabled:    false,
+        fit1_enabled:        false,
+        // Advanced Options 3
+        advanced_burst_enabled:         false,
+        event_buffering_enabled:        false,
+        event_filtering_enabled:        false,
+        high_duty_search_enabled:       false,
+        search_sharing_enabled:         false,
+        selective_data_updates_enabled: false,
+        encrypted_channel_enabled:      false,
+        // Advanced Options 4
+        capabilities_rfactive_notification_enabled: false,
+    };
+
     describe('encode', () => {
         test('default message', () => {
-            const capabilities = {
-                // Standart Options
-                no_receive_channels:  false,
-                no_transmit_channels: false,
-                no_receive_messages:  false,
-                no_transmit_messages: false,
-                no_ackd_messages:     false,
-                no_burst_messages:    false,
-                // Advanced Options
-                network_enabled:              false,
-                serial_number_enabled:        false,
-                per_channel_tx_power_enabled: false,
-                low_priority_search_enabled:  false,
-                script_enabled:               false,
-                search_list_enabled:          false,
-                // Advanced Options 2
-                led_enabled:         false,
-                ext_message_enabled: false,
-                scan_mode_enabled:   false,
-                prox_search_enabled: false,
-                ext_assign_enabled:  false,
-                fs_antfs_enabled:    false,
-                fit1_enabled:        false,
-                // Advanced Options 3
-                advanced_burst_enabled:         false,
-                event_buffering_enabled:        false,
-                event_filtering_enabled:        false,
-                high_duty_search_enabled:       false,
-                search_sharing_enabled:         false,
-                selective_data_updates_enabled: false,
-                encrypted_channel_enabled:      false,
-                // Advanced Options 4
-                capabilities_rfactive_notification_enabled: false,
-            };
-
-            let msg = message.capabilities.encode(Object.assign(capabilities, {maxChannels: 8, maxNetworks: 1, maxSensRcore: 1}));
-
+            const msg = message.capabilities.encode(Object.assign(
+                capabilities, {maxChannels: 8, maxNetworks: 1, maxSensRcore: 1}
+            ));
             expect(dataviewToArray(msg)).toEqual([164, 8, 84,  8, 1, 0, 0, 0, 1, 0, 0, 240]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default message', () => {
+            const view = message.capabilities.encode(Object.assign(
+                capabilities, {maxChannels: 8, maxNetworks: 1, maxSensRcore: 1}
+            ));
+            const res  = message.capabilities.decode(view);
+            expect(res).toEqual(
+                Object.assign(
+                    capabilities, {id: 84, valid: true, maxChannels: 8, maxNetworks: 1, maxSensRcore: 1}
+                )
+            );
         });
     });
 
@@ -536,27 +625,334 @@ describe('Serial Number Message', () => {
 
 });
 
+describe('Data Page', () => {
+    const definitions = {
+        value1: {
+            resolution: 1, offset: 0, unit: '', min: 0, max: 10, invalid: 255, default: 0
+        },
+        value2: {
+            resolution: 0.1, offset: 0, unit: '', min: 0, max: 10, invalid: 255, default: 1
+        },
+        // input value is between 1 and 20
+        // ouput value is between 100 and 200
+        value3: {
+            resolution: 0.1, offset: 10, unit: '', min: 0, max: 20, invalid: 255, default: 1
+        },
+    };
 
+    const dataPage = DataPage({definitions});
 
-describe('Data Page 16 (General FE Data)', () => {
+    describe('length', () => {
+        test('length', () => {
+            expect(dataPage.length).toEqual(8);
+        });
+    });
+
+    describe('applyResolution', () => {
+        test('basic', () => {
+            expect(dataPage.applyResolution('value1', 1)).toEqual(1);
+        });
+
+        test('with resolution', () => {
+            expect(dataPage.applyResolution('value2', 1)).toEqual(10);
+        });
+    });
+
+    describe('removeResolution', () => {
+        test('basic', () => {
+            expect(dataPage.removeResolution('value1', 1)).toEqual(1);
+        });
+
+        test('with resolution', () => {
+            expect(dataPage.removeResolution('value2', 100)).toEqual(10);
+        });
+    });
+
+    describe('applyOffset', () => {
+        test('with offset', () => {
+            expect(dataPage.applyOffset('value3', 1)).toEqual(110);
+        });
+    });
+
+    describe('removeOffset', () => {
+        test('with offset', () => {
+            expect(dataPage.removeOffset('value3', 110)).toEqual(1);
+        });
+    });
+
+    describe('encodeField', () => {
+        test('basic', () => {
+            expect(dataPage.encodeField('value1', 1)).toEqual(1);
+        });
+
+        test('input under min', () => {
+            expect(dataPage.encodeField('value1', -1)).toEqual(0);
+        });
+
+        test('input over max', () => {
+            expect(dataPage.encodeField('value1', 11)).toEqual(10);
+        });
+
+        test('with offset', () => {
+            expect(dataPage.encodeField('value3', 1, dataPage.applyOffset)).toEqual(110);
+        });
+    });
+
+    describe('decodeField', () => {
+        test('basic', () => {
+            expect(dataPage.decodeField('value1', 1)).toEqual(1);
+        });
+
+        test('with offset', () => {
+            expect(dataPage.decodeField('value3', 110, dataPage.removeOffset)).toEqual(1);
+        });
+    });
+
+});
+
+describe('Data Page 48 - Basic Resistance', () => {
 
     describe('encode', () => {
         test('default', () => {
+            const msg = fec.dataPage48.encode();
+            expect(dataviewToArray(msg)).toEqual([48, 0,0,0,0,0,0, 0]);
+        });
 
-            // let msg = fec.dataPage16.encode();
-            // expect(dataviewToArray(msg)).toEqual([164,]);
+        test('in range', () => {
+            const msg = fec.dataPage48.encode({resistance: 10});
+            expect(dataviewToArray(msg)).toEqual([48, 0,0,0,0,0,0, 20]);
+        });
+
+        test('under min', () => {
+            const msg = fec.dataPage48.encode({resistance: -10});
+            expect(dataviewToArray(msg)).toEqual([48, 0,0,0,0,0,0, 0]);
+        });
+
+        test('over max', () => {
+            const msg = fec.dataPage48.encode({resistance: 110});
+            expect(dataviewToArray(msg)).toEqual([48, 0,0,0,0,0,0, 200]);
         });
     });
 
     describe('decode', () => {
         test('default', () => {
+            const view = fec.dataPage48.encode({resistance: 10});
+            const res = fec.dataPage48.decode(view);
+            expect(res).toEqual({resistance: 10});
+        });
+    });
+});
 
-            // fec.dataPage16.decode([]);
-            // expect(dataviewToArray(msg)).toEqual([164,]);
+describe('Data Page 49 - Target Power', () => {
+
+    describe('encode', () => {
+        test('default', () => {
+            const msg = fec.dataPage49.encode();
+            expect(dataviewToArray(msg)).toEqual([49, 0,0,0,0,0, 0,0]);
+        });
+
+        test('in range', () => {
+            const msg = fec.dataPage49.encode({power: 200});
+            expect(dataviewToArray(msg)).toEqual([49, 0,0,0,0,0, 32,3]);
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = fec.dataPage49.encode({power: 200});
+            const res = fec.dataPage49.decode(view);
+            expect(res).toEqual({power: 200});
+        });
+    });
 });
+
+describe('Data Page 50 - Wind Resistance', () => {
+
+    describe('encode', () => {
+        test('invalid', () => {
+            const msg = fec.dataPage50.encode({
+                windResistance: fec.dataPage50.definitions.windResistance.invalid,
+                windSpeed:      fec.dataPage50.definitions.windSpeed.invalid,
+                draftingFactor: fec.dataPage50.definitions.draftingFactor.invalid
+            });
+            expect(dataviewToArray(msg)).toEqual([50, 0,0,0,0, 255, 255, 255]);
+        });
+        test('default', () => {
+            const msg = fec.dataPage50.encode();
+            expect(dataviewToArray(msg)).toEqual([50, 0,0,0,0, 51, 127, 100]);
+        });
+
+        test('windResistance', () => {
+            const msg = fec.dataPage50.encode({windResistance: 0.48});
+            expect(dataviewToArray(msg)).toEqual([50, 0,0,0,0, 48, 127, 100]);
+        });
+
+        test('crr', () => {
+            const msg = fec.dataPage50.encode({windSpeed: 20});
+            expect(dataviewToArray(msg)).toEqual([50, 0,0,0,0, 51, 147, 100]);
+        });
+
+        test('draftingFactor', () => {
+            const msg = fec.dataPage50.encode({draftingFactor: 0.4});
+            expect(dataviewToArray(msg)).toEqual([50, 0,0,0,0, 51, 127, 40]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = fec.dataPage50.encode();
+            const res = fec.dataPage50.decode(view);
+            expect(res).toEqual({
+                windResistance: 0.51,
+                windSpeed: 0,
+                draftingFactor: 1
+            });
+        });
+    });
+});
+
+describe('Data Page 51 - Track Resistance', () => {
+
+    describe('encode', () => {
+        test('invalid', () => {
+            const msg = fec.dataPage51.encode({
+                grade: fec.dataPage51.definitions.grade.invalid,
+                crr:   fec.dataPage51.definitions.crr.invalid,
+            });
+            expect(dataviewToArray(msg)).toEqual([51, 0,0,0,0, 255,255, 255]);
+        });
+        test('default', () => {
+            const msg = fec.dataPage51.encode();
+            expect(dataviewToArray(msg)).toEqual([51, 0,0,0,0, 32,78, 80]);
+        });
+
+        test('grade', () => {
+            const msg = fec.dataPage51.encode({grade: 4.8});
+            expect(dataviewToArray(msg)).toEqual([51, 0,0,0,0, 0,80, 80]);
+        });
+
+        test('crr', () => {
+            const msg = fec.dataPage51.encode({crr: 0.00321});
+            expect(dataviewToArray(msg)).toEqual([51, 0,0,0,0, 32,78, 64]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = fec.dataPage51.encode();
+            const res = fec.dataPage51.decode(view);
+            expect(res).toEqual({
+                grade: 0,
+                crr: 0.004,
+            });
+        });
+    });
+});
+
+describe('Data Page 55 - User Configuration', () => {
+
+    describe('encode', () => {
+        test('invalid', () => {
+            const msg = fec.dataPage55.encode({
+                userWeight:     fec.dataPage55.definitions.userWeight.invalid,
+                diameterOffset: fec.dataPage55.definitions.diameterOffset.invalid,
+                bikeWeight:     fec.dataPage55.definitions.bikeWeight.invalid,
+                wheelDiameter:  fec.dataPage55.definitions.wheelDiameter.invalid,
+                gearRatio:      fec.dataPage55.definitions.gearRatio.invalid,
+            });
+            expect(dataviewToArray(msg)).toEqual([55, 255,255, 0, 255,255, 255, 0]);
+        });
+        test('default', () => {
+            const msg = fec.dataPage55.encode();
+            expect(dataviewToArray(msg)).toEqual([55, 76,29, 0, 143,12, 70, 0]);
+        });
+
+        test('userWeight', () => {
+            const msg = fec.dataPage55.encode({userWeight: 80});
+            expect(dataviewToArray(msg)).toEqual([55, 64,31, 0, 143,12, 70, 0]);
+        });
+
+        test('bikeWeight', () => {
+            const msg = fec.dataPage55.encode({bikeWeight: 7});
+            expect(dataviewToArray(msg)).toEqual([55, 76,29, 0, 207,8, 70, 0]);
+        });
+
+        test('wheelDiameter', () => {
+            const msg = fec.dataPage55.encode({wheelDiameter: 0.6});
+            expect(dataviewToArray(msg)).toEqual([55, 76,29, 0, 143,12, 60, 0]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = fec.dataPage55.encode();
+            const res = fec.dataPage55.decode(view);
+            expect(res).toEqual({
+                userWeight: 75,
+                diameterOffset: 15,
+                bikeWeight: 10,
+                wheelDiameter: 0.7,
+                gearRatio: 0,
+            });
+        });
+    });
+});
+
+describe('Data Page 16 - General FE Data', () => {
+
+    describe('encode', () => {
+        test('default', () => {
+            const msg = fec.dataPage16.encode();
+            expect(dataviewToArray(msg)).toEqual([16, 25, 0, 0, 0,0, 255, 32]);
+        });
+
+        test('invalid', () => {
+            const msg = fec.dataPage16.encode();
+            expect(dataviewToArray(msg)).toEqual([16, 25, 0, 0, 0,0, 255, 32]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = fec.dataPage16.encode();
+            const res = fec.dataPage16.decode(view);
+            expect(res).toEqual({
+                equipmentType: 'Trainer/Stationary Bike',
+                elapsedTime: 0,
+                speed: 0,
+                heartRate: 255,
+                capabilities: {
+                    hrDataSource: 'Unknown',
+                    distance: false,
+                    virtualSpeed: false,
+                },
+                feState: {
+                    feState: 'READY',
+                    lapToggle: 0,
+                },
+            });
+        });
+    });
+});
+
+describe.skip('Data Page 25 - Trainer Data', () => {
+
+    describe('encode', () => {
+        test('default', () => {
+            const msg = fec.dataPage25.encode();
+            expect(dataviewToArray(msg)).toEqual([25, 0, 0, 0,0, 0,0, 0]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = fec.dataPage25.encode();
+            const res = fec.dataPage25.decode(view);
+            expect(res).toEqual({});
+        });
+    });
+});
+
 
 // describe('', () => {
 

@@ -13,6 +13,10 @@ function fixInRange(min, max, value) {
     }
 }
 
+function format(x, precision = 1000) {
+    return Math.round(x * precision) / precision;
+}
+
 //
 // ANT+ and .FIT
 //
@@ -38,6 +42,7 @@ function timeDiff(timestamp1, timestamp2) {
 export {
     // Other
     fixInRange,
+    format,
 
     // ANT+ and .FIT
     toFitTimestamp,
