@@ -4,22 +4,39 @@ import { equals, exists, existance, isUndefined,
 import { ids, events, channelTypes, values, keys } from './constants.js';
 
 function Message(args = {}) {
-    const sync          = values.sync;
-    const id            = ids[existance(args.id)];
-    const fixedLength   = 4;
-    let   contentLength = args.contentLength;
-    const totalLength   = calcLength(contentLength);
+    const sync        = values.sync;
+    const id          = ids[existance(args.id)];
+    const fixedLength = 4;
+    let _contentLength;
+    let _totalLength;
+
+    setLengths(existance(args.contentLength, 0));
 
     function getLength() {
-        return totalLength;
+        return _totalLength;
     }
+    function setLength(length) {
+        _totalLength = length;
+        return _totalLength;
+    }
+
     function getContentLength() {
-        return contentLength;
+        return _contentLength;
+    }
+    function setContentLength(length) {
+        _contentLength = length;
+        return _contentLength;
     }
 
     function calcLength(contentLength) {
-        contentLength = contentLength;
         return fixedLength + contentLength;
+    }
+
+    function setLengths(contentLength) {
+        const length = calcLength(contentLength);
+        setContentLength(contentLength);
+        setLength(length);
+        return { length, contentLength };
     }
 
     function validate(dataview, check) {
@@ -28,12 +45,14 @@ function Message(args = {}) {
 
     return {
         sync,
-        fixedLength,
-        getContentLength,
         id,
+        fixedLength,
 
+        getContentLength,
+        setContentLength,
         getLength,
         calcLength,
+        setLengths,
         validate,
         xor: xor,
     };
@@ -41,18 +60,18 @@ function Message(args = {}) {
 
 // Config messages
 function AssignChannel() {
-    const defaults = {
-        channelNumber: 0,
-        channelType:   channelTypes.slave.bidirectional,
-        networkNumber: 0,
-        extended:      extendedAssignment.backgroundScanningEnable
-    };
-
     const extendedAssignment = {
         backgroundScanningEnable:       0x01,
         frequencyAgilityEnable:         0x04,
         fastChannelInitiationEnable:    0x10,
         asynchronousTransmissionEnable: 0x20
+    };
+
+    const defaults = {
+        channelNumber: 0,
+        channelType:   channelTypes.slave.bidirectional,
+        networkNumber: 0,
+        extended:      extendedAssignment.backgroundScanningEnable
     };
 
     const msg = Message({
@@ -64,9 +83,9 @@ function AssignChannel() {
         return 3;
     }
 
-    function encode(args = {extended: false}) {
-        const length        = msg.calcLength(contentLength(args.extended));
-        const xorIndex      = length - 1;
+    function encode(args = {}) {
+        const { length } = msg.setLengths(contentLength(exists(args.extended)));
+        const xorIndex   = length - 1;
 
         const channelNumber = existance(args.channelNumber, defaults.channelNumber);
         const channelType   = existance(args.channelType, defaults.channelType);
@@ -81,7 +100,7 @@ function AssignChannel() {
         view.setUint8(4, channelType, true);
         view.setUint8(5, networkNumber, true);
 
-        if(args.extended) {
+        if(exists(args.extended)) {
             view.setUint8(6, args.extended, true);
         }
 
@@ -91,10 +110,11 @@ function AssignChannel() {
     }
 
     function decode(dataview) {
-        const contentLength = dataview.getUint8(2, true);
+        const contentLength = dataview.getUint8(1, true);
         const id            = dataview.getUint8(2, true);
         const channelNumber = dataview.getUint8(3, true);
         const channeType    = dataview.getUint8(4, true);
+        const networkNumber = dataview.getUint8(5, true);
         const xorIndex      = dataview.byteLength - 1;
         const check         = dataview.getUint8(xorIndex, true);
         const valid         = msg.validate(dataview, check);
@@ -103,12 +123,13 @@ function AssignChannel() {
             id,
             channelNumber,
             channeType,
+            networkNumber,
             valid,
         };
 
         let extended;
         if(equals(contentLength, 4)) {
-            extended = dataview.getUint8(5, true);
+            extended = dataview.getUint8(6, true);
             res.extended = extended;
         }
 
@@ -117,6 +138,7 @@ function AssignChannel() {
 
     return Object.freeze({
         extendedAssignment,
+        contentLength,
         encode,
         decode,
     });
@@ -335,6 +357,11 @@ function SetNetworkKey() {
         networkNumber: 0,
     };
 
+    const networkKeyIndex    = 4;
+    const networkKeyLength   = 8;
+    const networkKeyIndexEnd = networkKeyIndex + networkKeyLength;
+    const xorIndex           = 12;
+
     const msg = Message({
         contentLength: 9,
         id: 'setNetworkKey', // 70, 0x46
@@ -342,7 +369,7 @@ function SetNetworkKey() {
     const length = msg.getLength();
 
     function encode(args = {}) {
-        const networkKey        = existance(args.networkKey, defaults.networkKey);
+        const networkKey    = existance(args.networkKey, defaults.networkKey);
         const networkNumber = existance(args.networkNumber, defaults.networkNumber);
 
         const buffer = new ArrayBuffer(length);
@@ -353,9 +380,9 @@ function SetNetworkKey() {
         view.setUint8(2, msg.id, true);
         view.setUint8(3, networkNumber, true);
 
-        uint8.set(new Uint8Array(networkKey), 4);
+        uint8.set(new Uint8Array(networkKey), networkKeyIndex);
 
-        view.setUint8(length - 1, msg.xor(view), true);
+        view.setUint8(xorIndex, msg.xor(view), true);
 
         return view;
     }
@@ -364,9 +391,7 @@ function SetNetworkKey() {
         const id            = dataview.getUint8(2, true);
         const networkNumber = dataview.getUint8(3, true);
         const array         = dataviewToArray(dataview);
-        const networkKey    = array.slice(4, 8);
-
-        const xorIndex      = dataview.byteLength - 1;
+        const networkKey    = array.slice(networkKeyIndex, networkKeyIndexEnd);
         const check         = dataview.getUint8(xorIndex, true);
         const valid         = msg.validate(dataview, check);
 
@@ -577,14 +602,18 @@ function OpenRxScanMode() {
         id: 'openRxScanMode', // 91, 0x5B
     });
 
-    function contentLength(syncPackets) {
-        if(syncPackets) return  2;
+    function contentLength(args) {
+        if(exists(args.syncPackets)) return  2;
         return 1;
     }
 
-    function encode(args = {syncPackets: false}) {
+    // syncPackets:
+    // 0 – Default configuration.
+    // 1 – Allow synchronous channel packets only.
+
+    function encode(args = {}) {
         const syncPackets = args.syncPackets;
-        const length      = msg.calcLength(contentLength(args.syncPackets));
+        const { length }  = msg.setLengths(contentLength(args));
         const xorIndex    = length - 1;
 
         const buffer = new ArrayBuffer(length);
@@ -594,8 +623,8 @@ function OpenRxScanMode() {
         view.setUint8(2, msg.id, true);
         view.setUint8(3, 0, true);
 
-        if(syncPackets) {
-            view.setUint8(4, boolToNumber(syncPackets), true);
+        if(exists(syncPackets)) {
+            view.setUint8(4, syncPackets, true);
         }
 
         view.setUint8(xorIndex, msg.xor(view), true);
@@ -619,7 +648,7 @@ function OpenRxScanMode() {
 
         if(equals(contentLength, 2)) {
             syncPackets = dataview.getUint8(4, true);
-            res.syncPackets = bitToBool(syncPackets);
+            res.syncPackets = syncPackets;
         }
 
         return res;
@@ -767,7 +796,7 @@ function LowPrioritySearchTimeout() {
 
 function EnableExtRxMessages() {
     const defaults = {
-        enable: true, // 0 disable, 1 enable
+        enable: 1, // 0 disable, 1 enable
     };
 
     const msg = Message({
@@ -777,11 +806,10 @@ function EnableExtRxMessages() {
     const length = msg.getLength();
 
     function encode(args = {}) {
+        const enable = existance(args.enable, defaults.enable);
+
         const buffer = new ArrayBuffer(length);
         const view   = new DataView(buffer);
-
-        const enable = boolToNumber(existance(args.enable, defaults.enable));
-
         view.setUint8(0, msg.sync, true);
         view.setUint8(1, msg.getContentLength(), true);
         view.setUint8(2, msg.id, true);
@@ -795,7 +823,7 @@ function EnableExtRxMessages() {
     function decode(dataview) {
         const id            = dataview.getUint8(2, true);
         const channelNumber = dataview.getUint8(3, true);
-        const enable        = bitToBool(dataview.getUint8(4, true));
+        const enable        = dataview.getUint8(4, true);
         const check         = dataview.getUint8(5, true);
         const valid         = msg.validate(dataview, check);
 
@@ -841,14 +869,12 @@ function LibConfig() {
 
     function decode(dataview) {
         const id            = dataview.getUint8(2, true);
-        const channelNumber = dataview.getUint8(4, true);
         const config        = dataview.getUint8(4, true);
         const check         = dataview.getUint8(5, true);
         const valid         = msg.validate(dataview, check);
 
         return {
             id,
-            channelNumber,
             config,
             valid,
         };
@@ -864,15 +890,18 @@ function LibConfig() {
 function Data(args = {}) {
     const defaults = {
         channelNumber: 0,
-        payload: new Uint8Array(new ArrayBuffer(payloadLength)),
+        payload: (length) => new Uint8Array(new ArrayBuffer(length)),
     };
+
     const payloadIndex      = 4;
-    const extendedDataIndex = payloadIndex + (contentLength - 1);
+    const payloadLength     = 8;
+    const extendedDataIndex = payloadIndex + payloadLength;
+    const flagIndex         = 12;
 
     const typeId = existance(args.typeId);
 
-    function contentLength(extended) {
-        if(exists(extended)) return 9 + extended.byteLength;
+    function contentLength(args = {}) {
+        if(exists(args.extended)) return 9 + args.extended.byteLength;
         return 9;
     }
 
@@ -880,16 +909,21 @@ function Data(args = {}) {
         id: typeId,
     });
 
+    // Configuring extended data with:
+    // - EnableExtendedMessages, sends ChannelId (Device number, Device Type, Transmission Type)
+    // - LibConfig, sends ChannelId, RSSI and timestamp
+
+
     function encode(args = {}) {
-        const length   = msg.calcLength(args.extended);
-        const xorIndex = length - 1;
+        const { length } = msg.setLengths(contentLength(args));
+        const xorIndex   = length - 1;
 
         const channelNumber = existance(args.channelNumber, defaults.channelNumber);
-        const payload       = existance(args.payload,       defaults.payload);
+        const payload       = existance(args.payload,       defaults.payload(0));
 
         const buffer = new ArrayBuffer(length);
         const view   = new DataView(buffer);
-        let uint8  = new Uint8Array(buffer);
+        const uint8  = new Uint8Array(buffer);
 
         view.setUint8(0, msg.sync, true);
         view.setUint8(1, msg.getContentLength(), true);
@@ -934,13 +968,11 @@ function Data(args = {}) {
 }
 
 function BroadcastData() {
-    const id = ids.broadcastData; // 78, 0x4E
-    return Data({typeId: id});
+    return Data({typeId: 'broadcastData'}); // 78, 0x4E
 }
 
 function AcknowledgedData() {
-    const id = ids.acknowledgedData; // 79, 0x4F
-    return Data({typeId: id});
+    return Data({typeId: 'acknowledgedData'}); // 79, 0x4F
 }
 
 function BurstTransferData() {
@@ -995,7 +1027,7 @@ function ChannelEvent() {
 
     function encode(args) {
         const contentLength = calcContentLength(args);
-        const length        = msg.calcLength(contentLength);
+        const { length }    = msg.setLengths(contentLength);
         const xorIndex      = length - 1;
         const buffer        = new ArrayBuffer(length);
         const view          = new DataView(buffer);
@@ -1031,7 +1063,7 @@ function ChannelEvent() {
         const channelNumber = dataview.getUint8(3, true);
         const eventCode     = dataview.getUint8(5, true);
 
-        const length        = msg.calcLength(contentLength);
+        const { length }    = msg.setLengths(contentLength);
         const xorIndex      = length - 1;
         const uint8         = new Uint8Array(dataview.buffer);
 
@@ -1397,7 +1429,7 @@ function SerialNumber() {
 
     const msg = Message({
         contentLength: 4,
-        id: 'serialNumber',
+        id: 'serialNumber', // 97, 0x61
     });
     const length = msg.getLength();
 
@@ -1418,7 +1450,7 @@ function SerialNumber() {
     function decode(dataview) {
         const id           = dataview.getUint8( 2, true);
         const serialNumber = dataview.getUint32(3, true);
-        const check        = dataview.getUint8( 8, true);
+        const check        = dataview.getUint8( 7, true);
         const valid        = msg.validate(dataview, check);
 
         return {
@@ -1484,5 +1516,9 @@ const utils = {
     deviceTypeToString,
 };
 
-export { message, utils };
+export {
+    message,
+    Message,
+    utils,
+};
 

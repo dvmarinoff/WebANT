@@ -1,6 +1,6 @@
 import { equals, dataviewToArray, nthBitToBool, xor } from '../src/functions.js';
 import { ids, events, channelTypes, values, keys } from '../src/constants.js';
-import { message } from '../src/message.js';
+import { message, Message } from '../src/message.js';
 import { DataPage } from '../src/common.js';
 import { fec } from '../src/fec.js';
 
@@ -10,32 +10,112 @@ global.console = {
     warn: console.warn,
 };
 
+describe('Message', () => {
+
+    describe('fixed content length', () => {
+        const msg = Message({
+            contentLength: 3,
+            id: 'assignChannel',
+        });
+        test('sync', () => {
+            expect(msg.sync).toEqual(164);
+        });
+
+        test('id', () => {
+            expect(msg.id).toEqual(66);
+        });
+
+        test('getLength()', () => {
+            expect(msg.getLength()).toEqual(7);
+        });
+
+        test('calcLength()', () => {
+            expect(msg.calcLength(3)).toEqual(7);
+        });
+
+        test('getContentLength()', () => {
+            expect(msg.getContentLength()).toEqual(3);
+        });
+    });
+
+
+    describe('variable content length', () => {
+        const msg = Message({
+            id: 'assignChannel',
+        });
+
+        function contentLength(isExtended) {
+            if(isExtended) return 4;
+            return 3;
+        }
+
+        test('setLengths()', () => {
+            expect(msg.setLengths(contentLength(true))).toEqual({length: 8, contentLength: 4});
+        });
+
+        test('getContentLength()', () => {
+            expect(msg.getContentLength()).toEqual(4);
+        });
+
+        test('getLength()', () => {
+            expect(msg.getLength()).toEqual(8);
+        });
+    });
+});
+
 describe('Assaign Channel', () => {
 
     describe('encode', () => {
         test('default message', () => {
             let msg = message.assignChannel.encode();
-            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 0,  0, 0,  229]);
+            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 0, 0, 0, 229]);
         });
 
         test('sets channel number', () => {
             let msg = message.assignChannel.encode({channelNumber: 1});
-            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 1,  0, 0,  228]);
+            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 1, 0, 0, 228]);
         });
 
         test('sets channel type', () => {
             let msg = message.assignChannel.encode({channelType: channelTypes.slave.receiveOnly});
-            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 0,  64, 0,  165]);
+            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 0, 64, 0, 165]);
         });
 
         test('sets network number', () => {
-            let msg = message.assignChannel.encode({netNumber: 1});
-            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 0,  0, 1,  228]);
+            let msg = message.assignChannel.encode({networkNumber: 1});
+            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 0, 0, 1, 228]);
         });
 
         test('extended assignment', () => {
             let msg = message.assignChannel.encode({extended: 0x10});
-            expect(dataviewToArray(msg)).toEqual([164, 3, 66, 0,  0, 0, 16,  245]);
+            expect(dataviewToArray(msg)).toEqual([164, 4, 66, 0, 0, 0, 16, 242]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.assignChannel.encode();
+            const res  = message.assignChannel.decode(view);
+            expect(res).toEqual({
+                id: 66,
+                channelNumber: 0,
+                channeType: 0,
+                networkNumber: 0,
+                valid: true,
+            });
+        });
+
+        test('extended', () => {
+            const view = message.assignChannel.encode({extended: 0x10});
+            const res  = message.assignChannel.decode(view);
+            expect(res).toEqual({
+                id: 66,
+                channelNumber: 0,
+                channeType: 0,
+                networkNumber: 0,
+                extended: 16,
+                valid: true,
+            });
         });
     });
 });
@@ -51,6 +131,28 @@ describe('UnassaignChannel', () => {
         test('sets channel number', () => {
             let msg = message.unassignChannel.encode({channelNumber: 1});
             expect(dataviewToArray(msg)).toEqual([164, 1, 65, 1, 229]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.unassignChannel.encode();
+            const res  = message.unassignChannel.decode(view);
+            expect(res).toEqual({
+                id: 65,
+                channelNumber: 0,
+                valid: true,
+            });
+        });
+
+        test('channel 1', () => {
+            const view = message.unassignChannel.encode({channelNumber: 1});
+            const res  = message.unassignChannel.decode(view);
+            expect(res).toEqual({
+                id: 65,
+                channelNumber: 1,
+                valid: true,
+            });
         });
     });
 });
@@ -86,8 +188,8 @@ describe('SetChannelId', () => {
 
     describe('decode', () => {
         test('default message', () => {
-            const msg = message.setChannelId.encode();
-            const res = message.setChannelId.decode(msg);
+            const view = message.setChannelId.encode();
+            const res  = message.setChannelId.decode(view);
             expect(res).toEqual({
                 id: 81,
                 channelNumber: 0,
@@ -97,13 +199,31 @@ describe('SetChannelId', () => {
                 valid: true,
             });
         });
+
+        test('set all params', () => {
+            const view = message.setChannelId.encode({
+                channelNumber: 1,
+                deviceNumber: 123,
+                deviceType: 120,
+                transmissionType: 0x10,
+            });
+            const res = message.setChannelId.decode(view);
+            expect(res).toEqual({
+                id: 81,
+                channelNumber: 1,
+                deviceNumber: 123,
+                deviceType: 120,
+                transmissionType: 16,
+                valid: true,
+            });
+        });
     });
 });
 
 describe('SetChannelPeriod', () => {
 
     describe('encode', () => {
-        test('default message', () => {
+        test('default', () => {
             let msg = message.setChannelPeriod.encode();
             expect(dataviewToArray(msg)).toEqual([164, 3, 67, 0, 0,32, 196]);
         });
@@ -118,12 +238,25 @@ describe('SetChannelPeriod', () => {
             expect(dataviewToArray(msg)).toEqual([164, 3, 67, 0, 0,64, 164]);
         });
     });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.setChannelPeriod.encode();
+            const res  = message.setChannelPeriod.decode(view);
+            expect(res).toEqual({
+                id: 67,
+                channelNumber: 0,
+                channelPeriod: 8192,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Set Channel Frequency', () => {
+describe('SetChannelFrequency', () => {
 
     describe('encode', () => {
-        test('default message', () => {
+        test('default', () => {
             let msg = message.setChannelFrequency.encode();
             expect(dataviewToArray(msg)).toEqual([164, 2, 69, 0, 66, 161]);
         });
@@ -139,9 +272,21 @@ describe('Set Channel Frequency', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.setChannelFrequency.encode();
+            const res  = message.setChannelFrequency.decode(view);
+            expect(res).toEqual({
+                id: 69,
+                channelNumber: 0,
+                rfFrequency: 66,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Set Network Key', () => {
+describe('SetNetworkKey', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -150,18 +295,31 @@ describe('Set Network Key', () => {
         });
 
         test('sets ant plus network key message', () => {
-            let msg = message.setNetworkKey.encode({netKey: keys.antPlus});
+            let msg = message.setNetworkKey.encode({networkKey: keys.antPlus});
             expect(dataviewToArray(msg)).toEqual([164, 9, 70, 0,  185,165,33,251,189,114,195,69,  100]);
         });
 
         test('sets network number', () => {
-            let msg = message.setNetworkKey.encode({netNumber: 1});
+            let msg = message.setNetworkKey.encode({networkNumber: 1});
             expect(dataviewToArray(msg)).toEqual([164, 9, 70, 1,  232,228,33,59,85,122,103,193,  117]);
+        });
+    });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.setNetworkKey.encode();
+            const res  = message.setNetworkKey.decode(view);
+            expect(res).toEqual({
+                id: 70,
+                networkNumber: 0,
+                networkKey: keys.public,
+                valid: true,
+            });
         });
     });
 });
 
-describe('Reset System', () => {
+describe('ResetSystem', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -170,9 +328,19 @@ describe('Reset System', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.resetSystem.encode();
+            const res  = message.resetSystem.decode(view);
+            expect(res).toEqual({
+                id: 74,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Open Channel', () => {
+describe('OpenChannel', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -186,9 +354,20 @@ describe('Open Channel', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.openChannel.encode();
+            const res  = message.openChannel.decode(view);
+            expect(res).toEqual({
+                id: 75,
+                channelNumber: 0,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Close Channel', () => {
+describe('CloseChannel', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -202,9 +381,20 @@ describe('Close Channel', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.closeChannel.encode();
+            const res  = message.closeChannel.decode(view);
+            expect(res).toEqual({
+                id: 76,
+                channelNumber: 0,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Request Message', () => {
+describe('RequestMessage', () => {
     // requestable are:
     // channelStatus, channelID, ANTversion, capabilities, eventBufferConfiguration,
     // advancedBurstCapabilities, advancedBurstConfiguration, eventFilter,
@@ -229,9 +419,21 @@ describe('Request Message', () => {
         // the sub message param in 9.5.4.4 is a mistery to me
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.requestMessage.encode();
+            const res  = message.requestMessage.decode(view);
+            expect(res).toEqual({
+                id: 77,
+                param: 0,
+                requestedMessageId: 82,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Open Rx Scan Mode', () => {
+describe('OpenRxScanMode', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -245,6 +447,36 @@ describe('Open Rx Scan Mode', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.openRxScanMode.encode();
+            const res  = message.openRxScanMode.decode(view);
+            expect(res).toEqual({
+                id: 91,
+                valid: true,
+            });
+        });
+
+        test('syncPackets 0', () => {
+            const view = message.openRxScanMode.encode({syncPackets: 0});
+            const res  = message.openRxScanMode.decode(view);
+            expect(res).toEqual({
+                id: 91,
+                syncPackets: 0,
+                valid: true,
+            });
+        });
+
+        test('syncPackets 1', () => {
+            const view = message.openRxScanMode.encode({syncPackets: 1});
+            const res  = message.openRxScanMode.decode(view);
+            expect(res).toEqual({
+                id: 91,
+                syncPackets: 1,
+                valid: true,
+            });
+        });
+    });
 });
 
 describe('Sleep', () => {
@@ -256,9 +488,19 @@ describe('Sleep', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.sleep.encode();
+            const res  = message.sleep.decode(view);
+            expect(res).toEqual({
+                id: 197,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Search Timeout', () => {
+describe('SearchTimeout', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -277,9 +519,35 @@ describe('Search Timeout', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.searchTimeout.encode();
+            const res  = message.searchTimeout.decode(view);
+            expect(res).toEqual({
+                id: 68,
+                channelNumber: 0,
+                searchTimeout: 10,
+                valid: true,
+            });
+        });
+
+        test('channel 1, timeout 24 (60 seconds)', () => {
+            const msg = message.searchTimeout.encode({
+                channelNumber: 1,
+                searchTimeout: 24
+            });
+            const res = message.searchTimeout.decode(msg);
+            expect(res).toEqual({
+                id: 68,
+                channelNumber: 1,
+                searchTimeout: 24,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Low Priority Search Timeout', () => {
+describe('LowPrioritySearchTimeout', () => {
 
     describe('encode', () => {
         test('default message', () => {
@@ -297,9 +565,36 @@ describe('Low Priority Search Timeout', () => {
             expect(dataviewToArray(msg)).toEqual([164, 2, 99, 0, 12, 201]);
         });
     });
+
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.lowPrioritySearchTimeout.encode();
+            const res  = message.lowPrioritySearchTimeout.decode(view);
+            expect(res).toEqual({
+                id: 99,
+                channelNumber: 0,
+                searchTimeout: 2,
+                valid: true,
+            });
+        });
+
+        test('channel 1, timeout 24 (60 seconds)', () => {
+            const view = message.lowPrioritySearchTimeout.encode({
+                channelNumber: 1,
+                searchTimeout: 24
+            });
+            const res = message.lowPrioritySearchTimeout.decode(view);
+            expect(res).toEqual({
+                id: 99,
+                channelNumber: 1,
+                searchTimeout: 24,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Enable Extended Rx Messages', () => {
+describe('EnableExtendedRxMessages', () => {
 
     describe('encode', () => {
         test('default message (enable)', () => {
@@ -313,9 +608,32 @@ describe('Enable Extended Rx Messages', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default (enable)', () => {
+            const view = message.enableExtRxMessages.encode();
+            const res  = message.enableExtRxMessages.decode(view);
+            expect(res).toEqual({
+                id: 102,
+                channelNumber: 0,
+                enable: 1,
+                valid: true,
+            });
+        });
+
+        test('disable', () => {
+            const view = message.enableExtRxMessages.encode({enable: 0});
+            const res  = message.enableExtRxMessages.decode(view);
+            expect(res).toEqual({
+                id: 102,
+                channelNumber: 0,
+                enable: 0,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Lib Config', () => {
+describe('LibConfig', () => {
 
     describe('encode', () => {
         test('default message (disable)', () => {
@@ -346,56 +664,76 @@ describe('Lib Config', () => {
             expect(dataviewToArray(msg)).toEqual([164, 2, 110, 0, 224, 40]);
         });
     });
+
+    describe('decode', () => {
+        test('default (disabled)', () => {
+            const view = message.libConfig.encode();
+            const res  = message.libConfig.decode(view);
+            expect(res).toEqual({
+                id: 110,
+                config: values.libConfig.disabled,
+                valid: true,
+            });
+        });
+
+        test('Enables Rx Timestamp Output', () => {
+            const view = message.libConfig.encode({config: values.libConfig.rxTimestamps});
+            const res  = message.libConfig.decode(view);
+            expect(res).toEqual({
+                id: 110,
+                config: values.libConfig.rxTimestamps,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Acknowledged Data Messsage', () => {
+describe('AcknowledgedData', () => {
 
-    describe('Total Length', () => {
-        let extendedInfo = new DataView(new Uint8Array([128, 139,182, 17, 16]).buffer);
-
-        expect(message.acknowledgedData.TotalLength()).toBe(13);
-        expect(message.acknowledgedData.TotalLength(undefined)).toBe(13);
-        expect(message.acknowledgedData.TotalLength(null)).toBe(13);
-
-        expect(message.acknowledgedData.TotalLength(extendedInfo)).toBe(18);
-    });
+    // describe('Total Length', () => {
+    //     let extendedInfo = new DataView(new Uint8Array([128, 139,182, 17, 16]).buffer);
+    //     expect(message.acknowledgedData.TotalLength()).toBe(13);
+    //     expect(message.acknowledgedData.TotalLength(undefined)).toBe(13);
+    //     expect(message.acknowledgedData.TotalLength(null)).toBe(13);
+    //     expect(message.acknowledgedData.TotalLength(extendedInfo)).toBe(18);
+    // });
 
     describe('encode', () => {
         test('default message', () => {
-            let msg = message.acknowledgedData.encode();
-            expect(dataviewToArray(msg)).toEqual([164, 9, 79, 0,  0,0,0,0, 0,0,0,0,  226]);
+            const view = message.acknowledgedData.encode();
+            expect(dataviewToArray(view)).toEqual([164, 9, 79, 0,  0,0,0,0, 0,0,0,0,  226]);
         });
 
         test('sets channel', () => {
-            let msg = message.acknowledgedData.encode({channelNumber: 1});
-            expect(dataviewToArray(msg)).toEqual([164, 9, 79, 1,  0,0,0,0, 0,0,0,0,  227]);
+            const view = message.acknowledgedData.encode({channelNumber: 1});
+            expect(dataviewToArray(view)).toEqual([164, 9, 79, 1,  0,0,0,0, 0,0,0,0,  227]);
         });
 
         test('sets payload', () => {
-            let dataPage49 = new DataView(new Uint8Array([49, 255,255,255,255,255, 75,0]).buffer);
+            const dataPage49 = new DataView(new Uint8Array([49, 255,255,255,255,255, 75,0]).buffer);
 
             let msg = message.acknowledgedData.encode({payload: dataPage49});
             expect(dataviewToArray(msg)).toEqual([164, 9, 79, 0,  49, 255,255,255,255,255, 75,0,  103]);
         });
 
         test('sets extended data (Channel Id)', () => {
-            let dataPage16 = new DataView(new Uint8Array([16, 0b00011001, 4, 0,  0,0,  255, 0b00110100]).buffer);
-            let extendedData = new DataView(new Uint8Array([128, 139,182, 17, 16]).buffer);
+            const dataPage16 = new DataView(new Uint8Array([16, 25, 4, 0,  0,0,  255, 0b00110100]).buffer);
+            const extendedData = new DataView(new Uint8Array([128, 139,182, 17, 16]).buffer);
 
             let msg = message.acknowledgedData.encode({payload: dataPage16, extended: extendedData});
-            expect(dataviewToArray(msg)).toEqual([164, 9, 79, 0,  16, 25, 4, 0, 0,0, 255, 52,  128, 139,182, 17, 16,  152]);
+            expect(dataviewToArray(msg)).toEqual([164, 14, 79, 0,  16, 25, 4, 0, 0,0, 255, 52,  128, 139,182, 17, 16,  159]);
         });
 
         test('sets extended data (Channel Id + RSSI + Rx Timestamp)', () => {
-            let dataPage16 = new DataView(new Uint8Array([16, 0b00011001, 4, 0,  0,0,  255, 0b00110100]).buffer);
+            let dataPage16 = new DataView(new Uint8Array([16, 25, 4, 0,  0,0,  255, 0b00110100]).buffer);
             let extendedData = new DataView(new Uint8Array([224, 139,182, 17, 16,  32, 156,255, 128,  0, 128]).buffer);
 
             let msg = message.acknowledgedData.encode({payload: dataPage16, extended: extendedData});
-            expect(dataviewToArray(msg)).toEqual([164, 9, 79, 0, 16, 25, 4, 0, 0,0, 255, 52,
+            expect(dataviewToArray(msg)).toEqual([164, 20, 79, 0, 16, 25, 4, 0, 0,0, 255, 52,
                                                   224, 139,182, 17, 16,
                                                   32,  156,255, 128,
                                                   0, 128,
-                                                  187]);
+                                                  166]);
         });
     });
 
@@ -412,11 +750,11 @@ describe('ChannelEvent', () => {
 
     describe('decode', () => {
         test('on channel 1 response no error', () => {
-            const msg = message.channelEvent.encode({
+            const view = message.channelEvent.encode({
                 channelNumber: 1,
                 eventCode: 0
             });
-            const res = message.channelEvent.decode(msg);
+            const res = message.channelEvent.decode(view);
             expect(res).toEqual({
                 id: 64,
                 channelNumber: 1,
@@ -426,11 +764,11 @@ describe('ChannelEvent', () => {
         });
 
         test('on channel 1 event rx fail', () => {
-            const msg = message.channelEvent.encode({
+            const view = message.channelEvent.encode({
                 channelNumber: 1,
                 eventCode: 2
             });
-            const res = message.channelEvent.decode(msg);
+            const res = message.channelEvent.decode(view);
             expect(res).toEqual({
                 id: 64,
                 channelNumber: 1,
@@ -456,12 +794,12 @@ describe('Channel Response Message', () => {
 
     describe('decode', () => {
         test('on channel 1 for message id 82 response no error', () => {
-            const msg = message.channelResponse.encode({
+            const view = message.channelResponse.encode({
                 channelNumber: 1,
                 initMsgId: 82,
                 responseCode: 0
             });
-            const res = message.channelResponse.decode(msg);
+            const res = message.channelResponse.decode(view);
             expect(res).toEqual({
                 id: 64,
                 channelNumber: 1,
@@ -514,8 +852,8 @@ describe('Channel Status Message', () => {
 
     describe('decode', () => {
         test('default - unassigned', () => {
-            const msg = message.channelStatus.encode();
-            const res = message.channelStatus.decode(msg);
+            const view = message.channelStatus.encode();
+            const res  = message.channelStatus.decode(view);
             expect(res).toEqual({
                 id: 82,
                 channelNumber: 0,
@@ -612,20 +950,31 @@ describe('Capabilities', () => {
 
 });
 
-describe('Serial Number Message', () => {
+describe('SerialNumber', () => {
+
+    const sn = 1251800828;
 
     describe('encode', () => {
-        test('default message', () => {
-            const sn = 1251800828;
-
-            let msg = message.serialNumber.encode({serialNumber: sn});
+        test('set sn', () => {
+            const msg = message.serialNumber.encode({serialNumber: sn});
             expect(dataviewToArray(msg)).toEqual([164, 4, 97,  252,246,156,74, 29]);
         });
     });
 
+    describe('decode', () => {
+        test('read sn', () => {
+            const view = message.serialNumber.encode({serialNumber: sn});
+            const res  = message.serialNumber.decode(view);
+            expect(res).toEqual({
+                id: 97,
+                serialNumber: sn,
+                valid: true,
+            });
+        });
+    });
 });
 
-describe('Data Page', () => {
+describe('DataPage', () => {
     const definitions = {
         value1: {
             resolution: 1, offset: 0, unit: '', min: 0, max: 10, invalid: 255, default: 0
@@ -935,7 +1284,7 @@ describe('Data Page 16 - General FE Data', () => {
     });
 });
 
-describe.skip('Data Page 25 - Trainer Data', () => {
+describe('Data Page 25 - Trainer Data', () => {
 
     describe('encode', () => {
         test('default', () => {
@@ -947,8 +1296,44 @@ describe.skip('Data Page 25 - Trainer Data', () => {
     describe('decode', () => {
         test('default', () => {
             const view = fec.dataPage25.encode();
-            const res = fec.dataPage25.decode(view);
-            expect(res).toEqual({});
+            const res  = fec.dataPage25.decode(view);
+            expect(res).toEqual({
+                eventCount: 0,
+                cadence: 0,
+                accumulatedPower: 0,
+                power: 0,
+                status: {
+                    power: 0, resistance: 0, user: 0
+                },
+                flags: {
+                    limits: 'ok',
+                },
+                feState: {
+                    feState: 'READY',
+                    lapToggle: 0,
+                },
+            });
+        });
+
+        test('default', () => {
+            const config = {
+                eventCount: 3,
+                cadence: 80,
+                accumulatedPower: 100*3,
+                power: 100,
+                status: {
+                    power: 0, resistance: 0, user: 1
+                },
+                flags: { limits: 'high' },
+                feState: {
+                    feState: 'READY',
+                    lapToggle: 0,
+                },
+            };
+
+            const view = fec.dataPage25.encode(config);
+            const res  = fec.dataPage25.decode(view);
+            expect(res).toEqual(config);
         });
     });
 });

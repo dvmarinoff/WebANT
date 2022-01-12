@@ -26,7 +26,7 @@ const ids = {
     serialError:      174, // 0xAE
 
     // data
-    broascastData:     78, // 0x4E
+    broadcastData:     78, // 0x4E
     acknowledgedData:  79, // 0x4F
     broascastExtData:  93, // 0x5D
     burstData:         80, // 0x50

@@ -505,17 +505,17 @@ function DataPage16() {
 function TrainerStatus() {
     // TrainerStatus Field
 
-    function encode(status) {
-        return  boolToNumber(status.power) +
-            (boolToNumber(status.resistance) << 1) +
-            (boolToNumber(status.user) << 2);
+    function encode(status = {}) {
+        return  (existance(status.power, 0)) +
+               ((existance(status.resistance, 0)) << 1) +
+               ((existance(status.user, 0)) << 2);
     }
 
-    function decode(bitField) {
+    function decode(bitField = 0) {
         return {
-            power:      nthBitToBool(bitField, 0), // is it required
-            resistance: nthBitToBool(bitField, 1), // is it required
-            user:       nthBitToBool(bitField, 2), // is it required
+            power:      nthBit(bitField, 0), // is it required
+            resistance: nthBit(bitField, 1), // is it required
+            user:       nthBit(bitField, 2), // is it required
         };
     }
 
@@ -589,11 +589,11 @@ function DataPage25(args = {}) {
 
     function encode(args = {}) {
         const eventCount       = args.eventCount || 0;
-        const cadence          = data.encodeField('grade', args.grade);
+        const cadence          = data.encodeField('cadence', args.cadence);
         const accumulatedPower = data.encodeField('accumulatedPower', args.accumulatedPower);
-        const power            = data.encodeField('power', args.accumulatedPower);
+        const power            = data.encodeField('power', args.power);
         const status           = trainerStatusField.encode(args.status);
-        const feState          = feState.encode(args.feState);
+        const feState          = feStateField.encode(args.feState);
         const flags            = trainerFlagsField.encode(args.flags);
 
         const combined = (status << 12) + power;
@@ -615,7 +615,7 @@ function DataPage25(args = {}) {
 
     function decode(dataview) {
         const eventCount = dataview.getUint8(1, true);
-        const cadence = data.decodeField('cadence', dataview.getUint8(2, true), data.removeOffset);
+        const cadence = data.decodeField('cadence', dataview.getUint8(2, true));
         const accumulatedPower = data.decodeField('accumulatedPower', dataview.getUint16(3, true));
         const powerLSB  = dataview.getUint8(5, true);
         const combined  = dataview.getUint8(6, true);
@@ -634,6 +634,7 @@ function DataPage25(args = {}) {
             power,
             status,
             flags,
+            feState,
         };
     }
 
@@ -718,7 +719,7 @@ const fec = {
 
     dataPage16: DataPage16(),
     dataPage25: DataPage25(),
-    dataPage26: DataPage26(),
+    // dataPage26: DataPage26(),
 };
 
 export { fec };
