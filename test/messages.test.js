@@ -690,16 +690,8 @@ describe('LibConfig', () => {
 
 describe('AcknowledgedData', () => {
 
-    // describe('Total Length', () => {
-    //     let extendedInfo = new DataView(new Uint8Array([128, 139,182, 17, 16]).buffer);
-    //     expect(message.acknowledgedData.TotalLength()).toBe(13);
-    //     expect(message.acknowledgedData.TotalLength(undefined)).toBe(13);
-    //     expect(message.acknowledgedData.TotalLength(null)).toBe(13);
-    //     expect(message.acknowledgedData.TotalLength(extendedInfo)).toBe(18);
-    // });
-
     describe('encode', () => {
-        test('default message', () => {
+        test('default', () => {
             const view = message.acknowledgedData.encode();
             expect(dataviewToArray(view)).toEqual([164, 9, 79, 0,  0,0,0,0, 0,0,0,0,  226]);
         });
@@ -711,25 +703,24 @@ describe('AcknowledgedData', () => {
 
         test('sets payload', () => {
             const dataPage49 = new DataView(new Uint8Array([49, 255,255,255,255,255, 75,0]).buffer);
-
-            let msg = message.acknowledgedData.encode({payload: dataPage49});
-            expect(dataviewToArray(msg)).toEqual([164, 9, 79, 0,  49, 255,255,255,255,255, 75,0,  103]);
+            const view = message.acknowledgedData.encode({payload: dataPage49});
+            expect(dataviewToArray(view)).toEqual([164, 9, 79, 0,  49, 255,255,255,255,255, 75,0,  103]);
         });
 
         test('sets extended data (Channel Id)', () => {
             const dataPage16 = new DataView(new Uint8Array([16, 25, 4, 0,  0,0,  255, 0b00110100]).buffer);
             const extendedData = new DataView(new Uint8Array([128, 139,182, 17, 16]).buffer);
+            const view = message.acknowledgedData.encode({payload: dataPage16, extended: extendedData});
 
-            let msg = message.acknowledgedData.encode({payload: dataPage16, extended: extendedData});
-            expect(dataviewToArray(msg)).toEqual([164, 14, 79, 0,  16, 25, 4, 0, 0,0, 255, 52,  128, 139,182, 17, 16,  159]);
+            expect(dataviewToArray(view)).toEqual([164, 14, 79, 0,  16, 25, 4, 0, 0,0, 255, 52,  128, 139,182, 17, 16,  159]);
         });
 
         test('sets extended data (Channel Id + RSSI + Rx Timestamp)', () => {
-            let dataPage16 = new DataView(new Uint8Array([16, 25, 4, 0,  0,0,  255, 0b00110100]).buffer);
-            let extendedData = new DataView(new Uint8Array([224, 139,182, 17, 16,  32, 156,255, 128,  0, 128]).buffer);
+            const dataPage16 = new DataView(new Uint8Array([16, 25, 4, 0,  0,0,  255, 0b00110100]).buffer);
+            const extendedData = new DataView(new Uint8Array([224, 139,182, 17, 16,  32, 156,255, 128,  0, 128]).buffer);
+            const view = message.acknowledgedData.encode({payload: dataPage16, extended: extendedData});
 
-            let msg = message.acknowledgedData.encode({payload: dataPage16, extended: extendedData});
-            expect(dataviewToArray(msg)).toEqual([164, 20, 79, 0, 16, 25, 4, 0, 0,0, 255, 52,
+            expect(dataviewToArray(view)).toEqual([164, 20, 79, 0, 16, 25, 4, 0, 0,0, 255, 52,
                                                   224, 139,182, 17, 16,
                                                   32,  156,255, 128,
                                                   0, 128,
@@ -737,6 +728,26 @@ describe('AcknowledgedData', () => {
         });
     });
 
+    describe('decode', () => {
+        test('default', () => {
+            const view = message.acknowledgedData.encode();
+            const res  = message.acknowledgedData.decode(view);
+            expect(res.id).toEqual(79);
+            expect(res.channelNumber).toEqual(0);
+            expect(dataviewToArray(res.payload)).toEqual([0,0,0,0, 0,0,0,0,]);
+            expect(res.valid).toEqual(true);
+        });
+
+        test('with payload', () => {
+            const dataPage49 = new DataView(new Uint8Array([49, 255,255,255,255,255, 75,0]).buffer);
+            const view = message.acknowledgedData.encode({channelNumber: 4, payload: dataPage49});
+            const res  = message.acknowledgedData.decode(view);
+            expect(res.id).toEqual(79);
+            expect(res.channelNumber).toEqual(4);
+            expect(dataviewToArray(res.payload)).toEqual([49, 255,255,255,255,255, 75,0]);
+            expect(res.valid).toEqual(true);
+        });
+    });
 });
 
 describe('ChannelEvent', () => {
@@ -1087,7 +1098,7 @@ describe('Data Page 48 - Basic Resistance', () => {
         test('default', () => {
             const view = fec.dataPage48.encode({resistance: 10});
             const res = fec.dataPage48.decode(view);
-            expect(res).toEqual({resistance: 10});
+            expect(res).toEqual({dataPage: 48, resistance: 10});
         });
     });
 });
@@ -1110,7 +1121,7 @@ describe('Data Page 49 - Target Power', () => {
         test('default', () => {
             const view = fec.dataPage49.encode({power: 200});
             const res = fec.dataPage49.decode(view);
-            expect(res).toEqual({power: 200});
+            expect(res).toEqual({dataPage: 49, power: 200});
         });
     });
 });
@@ -1152,6 +1163,7 @@ describe('Data Page 50 - Wind Resistance', () => {
             const view = fec.dataPage50.encode();
             const res = fec.dataPage50.decode(view);
             expect(res).toEqual({
+                dataPage: 50,
                 windResistance: 0.51,
                 windSpeed: 0,
                 draftingFactor: 1
@@ -1191,6 +1203,7 @@ describe('Data Page 51 - Track Resistance', () => {
             const view = fec.dataPage51.encode();
             const res = fec.dataPage51.decode(view);
             expect(res).toEqual({
+                dataPage: 51,
                 grade: 0,
                 crr: 0.004,
             });
@@ -1237,11 +1250,12 @@ describe('Data Page 55 - User Configuration', () => {
             const view = fec.dataPage55.encode();
             const res = fec.dataPage55.decode(view);
             expect(res).toEqual({
+                dataPage: 55,
                 userWeight: 75,
                 diameterOffset: 15,
                 bikeWeight: 10,
                 wheelDiameter: 0.7,
-                gearRatio: 0,
+                gearRatio: undefined,
             });
         });
     });
@@ -1259,6 +1273,15 @@ describe('Data Page 16 - General FE Data', () => {
             const msg = fec.dataPage16.encode();
             expect(dataviewToArray(msg)).toEqual([16, 25, 0, 0, 0,0, 255, 32]);
         });
+
+        test('speed', () => {
+            const config = {
+                speed: 30, // km/h
+            };
+            const view = fec.dataPage16.encode(config);
+            expect(dataviewToArray(view)).toEqual([16, 25, 0, 0, 141,32, 255, 32]);
+        });
+
     });
 
     describe('decode', () => {
@@ -1266,10 +1289,11 @@ describe('Data Page 16 - General FE Data', () => {
             const view = fec.dataPage16.encode();
             const res = fec.dataPage16.decode(view);
             expect(res).toEqual({
-                equipmentType: 'Trainer/Stationary Bike',
+                dataPage: 16,
+                equipmentType: 'Unset',
                 elapsedTime: 0,
                 speed: 0,
-                heartRate: 255,
+                heartRate: undefined,
                 capabilities: {
                     hrDataSource: 'Unknown',
                     distance: false,
@@ -1280,6 +1304,27 @@ describe('Data Page 16 - General FE Data', () => {
                     lapToggle: 0,
                 },
             });
+        });
+
+        test('speed', () => {
+            const config = {
+                equipmentType: 'Unset',
+                elapsedTime: 0,
+                speed: 30.00, // km/h
+                heartRate: 255,
+                capabilities: {
+                    hrDataSource: 'Unknown',
+                    distance: false,
+                    virtualSpeed: false,
+                },
+                feState: {
+                    feState: 'READY',
+                    lapToggle: 0,
+                },
+            };
+            const view = fec.dataPage16.encode(config);
+            const res = fec.dataPage16.decode(view);
+            expect(res).toEqual(Object.assign(config, {dataPage: 16, heartRate: undefined,}));
         });
     });
 });
@@ -1298,6 +1343,7 @@ describe('Data Page 25 - Trainer Data', () => {
             const view = fec.dataPage25.encode();
             const res  = fec.dataPage25.decode(view);
             expect(res).toEqual({
+                dataPage: 25,
                 eventCount: 0,
                 cadence: 0,
                 accumulatedPower: 0,
@@ -1333,7 +1379,7 @@ describe('Data Page 25 - Trainer Data', () => {
 
             const view = fec.dataPage25.encode(config);
             const res  = fec.dataPage25.decode(view);
-            expect(res).toEqual(config);
+            expect(res).toEqual(Object.assign(config, {dataPage: 25,}));
         });
     });
 });

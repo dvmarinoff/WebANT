@@ -40,6 +40,7 @@ function DataPage(args = {}) {
     }
 
     function decodeField(prop, input, transform = removeResolution) {
+        if(equals(input, definitions[prop].invalid)) return undefined;
         return transform(prop, input);
     }
 
@@ -141,12 +142,14 @@ function CommonPage71(args = {}) {
     }
 
     function decode(dataview) {
-        const lastCommandId = dataview.getUint8(1, true);
+        const dataPage       = dataview.getUint8(0, true);
+        const lastCommandId  = dataview.getUint8(1, true);
         const sequenceNumber = dataview.getUint8(2, true);
-        const status = dataview.getUint8(3, true);
-        const data = dataview.getUint32(4, true);
+        const status         = dataview.getUint8(3, true);
+        const data           = dataview.getUint32(4, true);
 
         return {
+            dataPage,
             lastCommandId,
             sequenceNumber,
             status,

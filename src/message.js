@@ -941,17 +941,23 @@ function Data(args = {}) {
         return view;
     }
 
-    function decode(dataview) {
+    function decode(dataview, payloadDecoder = undefined) {
         const contentLength = dataview.getUint8(1, true);
         const id            = dataview.getUint8(2, true);
         const channelNumber = dataview.getUint8(3, true);
-
-        const payload = new DataView(); // must be dataview
-
-        const check         = dataview.getUint8(4, true);
+        const xorIndex      = dataview.byteLength - 1;
+        const check         = dataview.getUint8(xorIndex, true);
         const valid         = msg.validate(dataview, check);
 
-        throw new Error('not implemented');
+        let payload = new DataView(new ArrayBuffer(contentLength - 1)); // must be dataview
+
+        for(let i = 0; i < contentLength-1; i++) {
+            payload.setUint8(i, dataview.getUint8(payloadIndex + i, true), true);
+        }
+
+        if(exists(payloadDecoder)) {
+            payload = payloadDecoder(payload);
+        }
 
         return {
             id,

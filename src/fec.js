@@ -1,4 +1,4 @@
-import { equals, existance, xor,
+import { equals, existance, curry2, xor,
          nthBit, nthBitToBool, boolToNumber } from './functions.js';
 import { format } from './utils.js';
 import { DataPage } from './common.js';
@@ -29,9 +29,10 @@ function DataPage48() {
     }
 
     function decode(dataview) {
+        const dataPage = dataview.getUint8(0, true);
         const resistance = data.decodeField('resistance', dataview.getUint8(7, true));
 
-        return { resistance };
+        return { dataPage, resistance, };
     }
 
     return Object.freeze({
@@ -69,9 +70,10 @@ function DataPage49() {
     }
 
     function decode(dataview) {
+        const dataPage = dataview.getUint8(0, true);
         const power = data.decodeField('power', dataview.getUint16(6, true));
 
-        return { power };
+        return { dataPage, power, };
     }
 
     return Object.freeze({
@@ -144,11 +146,12 @@ function DataPage50() {
     }
 
     function decode(dataview) {
+        const dataPage       = dataview.getUint8(0, true);
         const windResistance = data.decodeField('windResistance', dataview.getUint8(5));
         const windSpeed      = data.decodeField('windSpeed', dataview.getUint8(6), data.removeOffset);
         const draftingFactor = data.decodeField('draftingFactor', dataview.getUint8(7));
 
-        return { windResistance, windSpeed, draftingFactor };
+        return { dataPage, windResistance, windSpeed, draftingFactor, };
     }
 
     return Object.freeze({
@@ -200,10 +203,11 @@ function DataPage51(args = {}) {
     }
 
     function decode(dataview) {
-        const grade = data.decodeField('grade', dataview.getUint16(5, true), data.removeOffset);
-        const crr   = data.decodeField('crr', dataview.getUint8(7, true));
+        const dataPage = dataview.getUint8(0, true);
+        const grade    = data.decodeField('grade', dataview.getUint16(5, true), data.removeOffset);
+        const crr      = data.decodeField('crr', dataview.getUint8(7, true));
 
-        return { grade, crr };
+        return { dataPage, grade, crr, };
     }
 
     return Object.freeze({
@@ -255,6 +259,7 @@ function DataPage55(args = {}) {
     }
 
     function decode(dataview) {
+        const dataPage       = dataview.getUint8(0, true);
         const userWeight     = data.decodeField('userWeight', dataview.getUint16(1, true));
         const combined       = dataview.getUint8(4, true);
         const bikeWeightLSN  = (combined >> 4);
@@ -265,6 +270,7 @@ function DataPage55(args = {}) {
         const gearRatio      = data.decodeField('gearRatio', dataview.getUint8(7, true));
 
         return {
+            dataPage,
             userWeight,
             diameterOffset,
             bikeWeight,
@@ -337,8 +343,8 @@ function EquipmentType() {
         if(equals(number, 23)) return 'Climber';
         if(equals(number, 24)) return 'Nordic Skier';
         if(equals(number, 25)) return 'Trainer/Stationary Bike';
-        console.log('Unknown equipment type number');
-        return 'Trainer/Stationary Bike';
+        // console.log(`Unknown equipment type number: ${number}`);
+        return 'Unset';
     };
 
     function toNumber(str) {
@@ -427,10 +433,10 @@ function DataPage16() {
 
     const definitions = {
         elapsedTime: {
-            resolution: 0.25, unit: 's', min: 0, max: 64, invalid: 0, default: 0
+            resolution: 0.25, unit: 's', min: 0, max: 64, default: 0
         },
         distance: {
-            resolution: 1, unit: 'm', min: 0, max: 256, invalid: 0, default: 0
+            resolution: 1, unit: 'm', min: 0, max: 256, default: 0
         },
         speed: {
             resolution: 0.001, unit: 'm/s', min: 0, max: 65.534, invalid: 0xFFFF, default: 0
@@ -447,11 +453,19 @@ function DataPage16() {
     const equipmentTypeField = EquipmentType();
     const capabilitiesField  = Capabilities();
 
+    const encodeSpeed = curry2((prop, value) => {
+        return value / definitions[prop].resolution / 3.6;
+    });
+
+    const decodeSpeed = curry2((prop, value) => {
+        return format(value * definitions[prop].resolution * 3.6, 100);
+    });
+
     function encode(args = {}) {
         const equipmentType = equipmentTypeField.encode(args.equipmentType);
         const elapsedTime   = data.encodeField('elapsedTime', args.elapsedTime);
         const distance      = data.encodeField('distance', args.distance);
-        const speed         = data.encodeField('speed', args.speed);
+        const speed         = data.encodeField('speed', args.speed, encodeSpeed);
         const heartRate     = data.encodeField('heartRate', args.heartRate);
         const capabilities  = capabilitiesField.encode(args.capabilities);
         const feState       = feStateField.encode(args.feState);
@@ -473,10 +487,11 @@ function DataPage16() {
     }
 
     function decode(dataview) {
+        const dataPage      = dataview.getUint8(0, true);
         const equipmentType = equipmentTypeField.decode('equipmentType', dataview.getUint8(1, true));
         const elapsedTime   = data.decodeField('elapsedTime', dataview.getUint8(2, true));
         const distance      = data.decodeField('distance', dataview.getUint8(3, true));
-        const speed         = data.decodeField('speed', dataview.getUint16(4, true));
+        const speed         = data.decodeField('speed', dataview.getUint16(4, true), decodeSpeed);
         const heartRate     = data.decodeField('heartRate', dataview.getUint8(6, true));
         const combined      = dataview.getUint8(7, true);
 
@@ -484,6 +499,7 @@ function DataPage16() {
         const feState       = feStateField.decode(combined >> 4);
 
         return {
+            dataPage,
             equipmentType,
             elapsedTime,
             speed,
@@ -614,12 +630,13 @@ function DataPage25(args = {}) {
     }
 
     function decode(dataview) {
-        const eventCount = dataview.getUint8(1, true);
-        const cadence = data.decodeField('cadence', dataview.getUint8(2, true));
+        const dataPage         = dataview.getUint8(0, true);
+        const eventCount       = dataview.getUint8(1, true);
+        const cadence          = data.decodeField('cadence', dataview.getUint8(2, true));
         const accumulatedPower = data.decodeField('accumulatedPower', dataview.getUint16(3, true));
-        const powerLSB  = dataview.getUint8(5, true);
-        const combined  = dataview.getUint8(6, true);
-        const combined2 = dataview.getUint8(7, true);
+        const powerLSB         = dataview.getUint8(5, true);
+        const combined         = dataview.getUint8(6, true);
+        const combined2        = dataview.getUint8(7, true);
 
         const power  = ((combined & 0b1111) << 8) + powerLSB;
         const status = trainerStatusField.decode(combined >> 4);
@@ -628,6 +645,7 @@ function DataPage25(args = {}) {
         const feState = feStateField.decode(combined2 >> 4);
 
         return {
+            dataPage,
             eventCount,
             cadence,
             accumulatedPower,
@@ -685,14 +703,16 @@ function DataPage26(args = {}) {
     }
 
     function decode(dataview) {
-        const eventCount = dataview.getUint8(1, true);
-        const wheelTicks = dataview.getUint8(2, true);
-        const wheelPeriod = dataview.getUint16(3, true);
+        const dataPage          = dataview.getUint8( 0, true);
+        const eventCount        = dataview.getUint8( 1, true);
+        const wheelTicks        = dataview.getUint8( 2, true);
+        const wheelPeriod       = dataview.getUint16(3, true);
         const accumulatedTorque = dataview.getUint16(5, true);
-        const combined = dataview.getUint8(7, true);
-        const feState = feStateField.decode(combined >> 4);
+        const combined          = dataview.getUint8( 7, true);
+        const feState           = feStateField.decode(combined >> 4);
 
         return {
+            dataPage,
             eventCount,
             wheelTicks,
             wheelPeriod,
