@@ -1,0 +1,120 @@
+<html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="theme-color" content="#35363a" />
+
+        <link rel="apple-touch-icon" sizes="180x180" href="favicon.svg">
+        <link rel="icon" type="image/png" sizes="196x196" href="favicon.svg">
+        <link rel="icon" type="image/png" sizes="192x192" href="favicon.svg">
+        <link rel="icon" type="image/png" sizes="32x32" href="favicon.svg">
+        <link rel="icon" type="image/png" sizes="16x16" href="favicon.svg">
+
+        <title>WebANT+</title>
+
+        <!-- <link rel="preconnect" href="https://fonts.gstatic.com"> -->
+        <!-- <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"> -->
+        <link href="demo/css/main.css" rel="stylesheet"/>
+    </head>
+
+    <body id="theme" class="dark-theme">
+        <div class="wrapper">
+
+            <div id="settings-page" class="page" page="settings">
+                <header class="page--header">
+                    <h2 class="page--heading">Settings</h2>
+                </header>
+
+                <div class="protocol-settings settings-btn-row">
+                    <div class="protocol-btn flat-btn settings-switch-btn-cont disabled">
+                        <connection-switch for="ant:driver" id="switch-controllable" class="connection-switch">
+                            <svg class="protocol-btn--icon icon off" xmlns="http://www.w3.org/2000/svg"
+                                 height="24" viewBox="0 0 24 24" width="24">
+                                <path d="M22 9V7h-2V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2v-2h-2V9h2zm-4 10H4V5h14v14zM6 13h5v4H6zm6-6h4v3h-4zM6 7h5v5H6zm6 4h4v6h-4z"/>
+                                <path d="M0 0h24v24H0zm0 0h24v24H0z" fill="none"/>
+                            </svg>
+                            <span class="connection-switch--label protocol-btn--label">ANT+</span>
+                        </connection-switch>
+                    </div>
+                </div>
+
+                <!-- controlable settings -->
+                <div class="device-card border-top">
+                    <div class="device-card--cont">
+                        <div class="device-card--header">
+                            <div class="device-card--header--label">Controllable</div>
+                        </div>
+                        <div class="device-card--body">
+                            <div class="device-card--body--row">
+                                <connection-switch for="ant:controllable"
+                                                   indicatorClass="connection-icon-switch--indicator"
+                                                   class="connection-icon-switch">
+                                    <svg class="connection-icon-switch--icon icon" xmlns="http://www.w3.org/2000/svg"
+                                         height="24" viewBox="0 0 24 24" width="24">
+                                        <path d="M22 9V7h-2V5c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2v-2h-2V9h2zm-4 10H4V5h14v14zM6 13h5v4H6zm6-6h4v3h-4zM6 7h5v5H6zm6 4h4v6h-4z"/>
+                                        <path d="M0 0h24v24H0zm0 0h24v24H0z" fill="none"/>
+                                    </svg>
+                                    <div class="connection-icon-switch--indicator off"></div>
+                                </connection-switch>
+                                <div class="device-card--tile name">
+                                    <h3 class="device-card--tile--header">Name</h3>
+                                    <data-view class="device-card--tile--value"
+                                               prop="ant:controllable:name">--</data-view>
+                                </div>
+                                <div class="device-card--tile">
+                                    <source-switch class="source-switch"
+                                                   for="power"
+                                                   use="ant:controllable">
+                                        <h3 class="device-card--tile--header">Power</h3>
+                                        <power-value class="data-view device-card--tile--value">--</power-value>
+                                    </source-switch>
+                                </div>
+                                <div class="device-card--tile">
+                                    <source-switch class="source-switch"
+                                                   for="cadence"
+                                                   use="ant:controllable">
+                                        <h3 class="device-card--tile--header">Cadence</h3>
+                                        <cadence-value class="data-view device-card--tile--value">--</cadence-value>
+                                    </source-switch>
+                                </div>
+                                <div class="device-card--tile">
+                                    <source-switch class="source-switch"
+                                                   for="speed"
+                                                   use="ant:controllable">
+                                        <h3 class="device-card--tile--header">Speed</h3>
+                                        <speed-value class="data-view device-card--tile--value">--</speed-value>
+                                    </source-switch>
+                                </div>
+                                <div class="device-card--tile">
+                                    <source-switch class="source-switch"
+                                                   for="heartRate"
+                                                   use="ant:controllable">
+                                        <h3 class="device-card--tile--header">Heart Rate</h3>
+                                        <heart-rate-value class="data-view device-card--tile--value">--</heart-rate-value>
+                                    </source-switch>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="about">
+                    <h2 class="page--heading">About</h2>
+                    <div class="about--text">
+                        <p class="">This is an open-source project. For more information, please visit the <a class="a" href="https://github.com/dvmarinoff/WebANT" target="_blank">github</a> page.</p>
+                    </div>
+                    <div class="about--version">
+                        <p class="">Version: 0.0.0</p>
+                    </div>
+                    <div class="about--links">
+                        License <a class="a" href="https://www.gnu.org/licenses/agpl-3.0.en.html"> AGPL-3.0</a></p>
+                    </div>
+                </div> <!-- end about -->
+            </div> <!-- end page -->
+
+        </div> <!-- end wrapper -->
+    </body>
+    <script type="module" src="demo/index.js"></script>
+</html>
