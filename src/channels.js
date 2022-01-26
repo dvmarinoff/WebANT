@@ -2,114 +2,95 @@ import { xf, equals, exists, existance, empty, first, last, delay } from './func
 import { keys, ids } from './constants.js';
 import { message } from './message.js';
 
-// const config = {
-//     channel: {
-//         channelNumber: 2,
-//     },
-//     deviceId: {
-//         deviceNumber: 0,
-//         deviceType: 17,
-//         transmissionType: 0,
-//     },
-//     filters: {
-//         deviceType: 17,
-//         period: (32768 / 4),
-//         frequency: 57,
-//         key: keys.antPlus,
-//     },
-//     onData: onData,
-// };
-
-// config: {
-//     channel: {
-//         channelNumber: 1,
-//     },
-//     deviceId: {
-//         deviceNumber: 0,
-//         deviceType: 0,
-//         transmissionType: 0,
-//     },
-//     filters: {
-//         deviceType: 0,
-//         period: (32280 / 4),
-//         frequency: 57,
-//         key: keys.antPlus,
-//     }
-// }
-
 function Channel(args = {}) {
-    const defaults = {
-        config: {
-            channelNumber:    0,
-            channelType:      0,
-            deviceType:       0,
-            enable:           1,
-            extended:         0x01,
-            searchTimeout:    0,
-            lowSearchTimeout: 255,
-            deviceNumber:     0,
-            transmissionType: 0,
-            channelPeriod:    8192,
-            rfFrequency:      66,
-            key:              keys.public,
-        }
-    };
+    const number  = existance(args.channelNumber);
+    const profile = existance(args.profile);
+    const onData  = existance(args.onData);
 
-    const config = configure(args);
+    let deviceId = 0;
+    let status   = 'searching';
+    let config   = configure({profile, number, deviceId, status});
+
+    function start() {
+        const self = this;
+        // xf.sub('ant:q:pull', onPull.bind(self));
+    }
+
+    function stop() {
+        const self = this;
+        // xf.unsub('ant:q:pull', onPull.bind(self));
+    }
 
     function configure(args) {
+        return channelConfig.get(args);
     }
 
     let q = existance(args.q, {});
-    function setQ(value) { q = value; return q; }
-
-    function open() {
-    }
 
     function search() {
-        // write(message.unassignChannel.encode(config)); // maybe ??
-        write(message.setNetworkKey.encode(config));
-        write(message.assignChannel.encode(config));
-        write(message.setChannelId.encode(config));
-        write(message.enableExtRxMessages(config));
-        write(message.lowPrioritySearchTimeout.encode(config));
-        write(message.searchTimeout.encode(config));
-        write(message.setChannelFrequency.encode(config));
-        write(message.setChannelPeriod.encode(config));
-        write(message.openChannel.encode(config));
+        config = configure({profile, number, deviceId, status: 'searching'});
+        console.log(`Channel: .search `, config);
+
+        requestStatus();
+        // push(message.unassignChannel.encode(config)); // maybe ??
+        push(message.setNetworkKey.encode(config));
+        push(message.assignChannel.encode(config));
+
+        push(message.setChannelId.encode(config));
+        push(message.enableExtRxMessages.encode(config));
+        push(message.lowPrioritySearchTimeout.encode(config));
+        push(message.searchTimeout.encode(config));
+
+        push(message.setChannelFrequency.encode(config));
+        push(message.setChannelPeriod.encode(config));
+        push(message.openChannel.encode(config));
     }
 
-    function connect() {
-        write(message.enableExtRxMessages(config));
+    function track() {
+        config = configure({profile, number, deviceId, status: 'tracking',});
+        console.log(config);
+
+        push(message.enableExtRxMessages(config));
+        push(message.setChannelId.encode(config));
+        push(message.lowPrioritySearchTimeout.encode(config));
+        push(message.searchTimeout.encode(config));
     }
 
-    function close() {
-        write(message.closeChannel.encode(config));
-    }
-
-    function status() {
+    function requestStatus() {
         const msg = message.requestMessage.encode({
             channelNumber:      config.channelNumber,
             requestedMessageId: ids.channelStatus,
         });
-        write(msg);
-        // write({channel: config.channelNumber, msg: msg});
+        push(msg);
     }
 
-    function onData() {
+    function open() {
     }
 
-    function write(msg) {
-        q.push(msg);
+    function close() {
+        push(message.closeChannel.encode(config));
+    }
+
+    function push(data) {
+        xf.dispatch('ant:q:push', data);
+    }
+
+    function defaultsOnData(data) {
+        return data;
     }
 
     return Object.freeze({
-        setQ,
+        search,
+        track,
+        requestStatus,
         open,
         close,
-        status,
+
+        onData,
+        push,
     });
 }
+
 
 function Channels() {
     const _channels = {
@@ -123,8 +104,10 @@ function Channels() {
         7: undefined,
     };
 
+
     function init() {
         // determine the status of each channel
+        console.log(`:Channels .init`);
     }
 
     function isAvailable(key) {
@@ -138,6 +121,7 @@ function Channels() {
     }
 
     function create(args = {}) {
+        console.log(`:Channels .create`);
         const number = findAvailable(1);
         args.channelNumber = number;
         const channel = Channel(args);
@@ -146,6 +130,7 @@ function Channels() {
     }
 
     function get(number) {
+        console.log(`:Channels .get`);
         return _channels[number];
     }
 

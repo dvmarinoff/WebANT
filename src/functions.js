@@ -50,6 +50,18 @@ function isNumber(x) {
     return equals(typeof x, 'number');
 }
 
+function isDataView(x) {
+    if(isUndefined(x)) return false;
+    if(equals(x.constructor, DataView)) return true;
+    return false;
+}
+
+function isBuffer() {
+    if(isUndefined(x)) return false;
+    if(equals(x.constructor, ArrayBuffer)) return true;
+    return false;
+}
+
 function isAtomic(x) {
     return isNumber(x) || isString(x);
 }
@@ -324,6 +336,21 @@ function XF(args = {}) {
 const xf = XF();
 
 // Bits
+function setUint24LE(dataview, index, value) {
+    dataview.setUint8(index,    value        & 0xFF, true); // LSB
+    dataview.setUint8(index+1, (value >> 8 ) & 0xFF, true);
+    dataview.setUint8(index+2,  value >> 16        , true); // MSB
+    return dataview;
+}
+
+function getUint24LE(dataview, index) {
+    const LSB = dataview.getUint8(index,   true); // LSB
+    const MB  = dataview.getUint8(index+1, true);
+    const MSB = dataview.getUint8(index+2, true); // MSB
+
+    return (MSB << 16) + (MB << 8) + LSB;
+}
+
 function nthBit(field, bit) {
     return (field >> bit) & 1;
 };
@@ -396,6 +423,8 @@ export {
     isNull,
     isUndefined,
     isFunction,
+    isDataView,
+    isBuffer,
     exists,
     existance,
     isArray,
@@ -435,6 +464,8 @@ export {
     xf,
 
     // bits
+    setUint24LE,
+    getUint24LE,
     nthBit,
     bitToBool,
     nthBitToBool,

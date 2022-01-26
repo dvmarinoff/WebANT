@@ -1,4 +1,4 @@
-import { xf, equals, existance, delay } from './functions.js';
+import { xf, equals, existance, isDataView, isArray, dataviewToArray, delay } from './functions.js';
 import { SerialDriver, SerialPolyfillDriver } from './web-serial.js';
 
 function Driver(args = {}) {
@@ -69,15 +69,24 @@ function Driver(args = {}) {
 
     async function onOpen() {
         await delay(1000);
-        xf.dispatch('ant:driver:opened');
+        xf.dispatch('ant:driver:ready');
+    }
+
+    function getChannel(data) {
+        if(isDataView(data)) return data.getUint8(3, true);
+        if(isArray(data)) return data[3];
+        return 0;
     }
 
     function onRx(data) {
-        xf.dispatch('ant:driver:rx', data);
+        const channel = getChannel(data);
+        console.log(`ant: rx: ${data}`);
+        xf.dispatch(`ant:driver:${channel}:rx`,
+                    new DataView(new Uint8Array(data).buffer));
     }
 
-    function onTx(data) {
-        _driver.write(data);
+    function onTx(dataview) {
+        _driver.write(dataview);
     }
 
     return Object.freeze({

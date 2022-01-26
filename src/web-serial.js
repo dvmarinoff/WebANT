@@ -49,7 +49,6 @@ function SerialPolyfillDriver(args = {}) {
     }
 
     async function open(cb) {
-        console.log('open');
         port = await request();
 
         await port.open({baudRate: defaults.baudRate});
@@ -71,31 +70,30 @@ function SerialPolyfillDriver(args = {}) {
         setIsOpen(false);
         setReading(false);
         await reader.cancel();
-        console.log(`ant driver closed`);
     }
 
     async function read() {
-        console.log('read');
+        console.log(':serial :reading');
         while (port.readable && isReading()) {
-            console.log('while');
+            // console.log('while');
             try {
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) { break; }
-                    console.log('while while');
+                    // console.log('while while');
                     onData(value);
                 }
-                console.log('not while while');
+                // console.log('not while while');
             } catch (error) {
                 console.error(`:serial :reader-error`, error);
             } finally {
                 reader.releaseLock();
-                console.log('finally');
+                // console.log('finally');
             }
         }
         writer.releaseLock();
         await port.close();
-        console.log('close');
+        console.log(':serial :closed');
     }
 
     function defaultOnData(data) {

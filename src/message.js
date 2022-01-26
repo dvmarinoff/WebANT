@@ -190,9 +190,9 @@ function UnassignChannel() {
 
 function SetChannelId() {
     const defaults = {
-        channelNumber:   0,
-        deviceNumber:    0,
-        deviceType:      0,
+        channelNumber:    0,
+        deviceNumber:     0,
+        deviceType:       0,
         transmissionType: 0
     };
 
@@ -534,11 +534,11 @@ function CloseChannel() {
     });
 }
 
-function RequestMessage() {
+function RequestMessage(args = {}) {
     const defaults = {
         channelNumber:      0,
         subMessageId:       false,
-        requestedMessageId: 82, // channel status message id
+        requestedMessageId: existance(args.requestedMessageId, ids.channelStatus),
     };
 
     const msg = Message({
@@ -747,8 +747,8 @@ function SearchTimeout() {
 
 function LowPrioritySearchTimeout() {
     const defaults = {
-        channelNumber: 0,
-        searchTimeout: 2, // 2 * 2.5 seconds = 5 seconds, 255 is infinite
+        channelNumber:    0,
+        lowSearchTimeout: 2, // 2 * 2.5 seconds = 5 seconds, 255 is infinite
     };
 
     const msg = Message({
@@ -758,8 +758,9 @@ function LowPrioritySearchTimeout() {
     const length = msg.getLength();
 
     function encode(args = {}) {
-        const channelNumber = existance(args.channelNumber, defaults.channelNumber);
-        const searchTimeout = existance(args.searchTimeout, defaults.searchTimeout);
+        const channelNumber    = existance(args.channelNumber, defaults.channelNumber);
+        const lowSearchTimeout = existance(args.lowSearchTimeout,
+                                        defaults.lowSearchTimeout);
 
         const buffer = new ArrayBuffer(length);
         const view   = new DataView(buffer);
@@ -767,23 +768,23 @@ function LowPrioritySearchTimeout() {
         view.setUint8(1, msg.getContentLength(), true);
         view.setUint8(2, msg.id, true);
         view.setUint8(3, channelNumber, true);
-        view.setUint8(4, searchTimeout, true);
+        view.setUint8(4, lowSearchTimeout, true);
         view.setUint8(5, msg.xor(view), true);
 
         return view;
     }
 
     function decode(dataview) {
-        const id            = dataview.getUint8(2, true);
-        const channelNumber = dataview.getUint8(3, true);
-        const searchTimeout = dataview.getUint8(4, true);
-        const check         = dataview.getUint8(5, true);
-        const valid         = msg.validate(dataview, check);
+        const id               = dataview.getUint8(2, true);
+        const channelNumber    = dataview.getUint8(3, true);
+        const lowSearchTimeout = dataview.getUint8(4, true);
+        const check            = dataview.getUint8(5, true);
+        const valid            = msg.validate(dataview, check);
 
         return {
             id,
             channelNumber,
-            searchTimeout,
+            lowSearchTimeout,
             valid,
         };
     }
@@ -890,6 +891,7 @@ function LibConfig() {
 function Data(args = {}) {
     const defaults = {
         channelNumber: 0,
+        typeId: 'broadcastData',
         payload: (length) => new Uint8Array(new ArrayBuffer(length)),
     };
 
@@ -898,7 +900,7 @@ function Data(args = {}) {
     const extendedDataIndex = payloadIndex + payloadLength;
     const flagIndex         = 12;
 
-    const typeId = existance(args.typeId);
+    const typeId = existance(args.typeId, defaults.typeId);
 
     function contentLength(args = {}) {
         if(exists(args.extended)) return 9 + args.extended.byteLength;
@@ -967,9 +969,37 @@ function Data(args = {}) {
         };
     }
 
+    function channelIdDecoder(dataview) {
+        const deviceNumber     = dataview.getUint16(13, true);
+        const deviceType       = dataview.getUint8(15, true);
+        const transmissionType = dataview.getUint8(16, true);
+
+        return {
+            deviceNumber,
+            deviceType,
+            transmissionType,
+        };
+    }
+
+    function isBroadcast(dataview) {
+        return equals(dataview.getUint8(2, true), ids.broadcastData);
+    }
+
+    function isAcknowledged(dataview) {
+        return equals(dataview.getUint8(2, true), ids.acknowledgedData);
+    }
+
+    function isExtended(dataview) {
+        return dataview.byteLength > 13;
+    }
+
     return Object.freeze({
+        isBroadcast,
+        isAcknowledged,
+        isExtended,
         encode,
         decode,
+        channelIdDecoder,
     });
 }
 
@@ -1099,12 +1129,17 @@ function ChannelEvent() {
         return res;
     }
 
+    function isEvent(dataview) {
+        return (equals(dataview.getUint8(2, true), ids.channelResponse) &&
+                equals(dataview.getUint8(4, true), 1));
+    }
+
     return Object.freeze({
+        isEvent,
         encode,
         decode,
     });
 }
-
 function ChannelResponse() {
     const defaults = {
         channelNumber: 0,
@@ -1153,7 +1188,13 @@ function ChannelResponse() {
         };
     }
 
+    function isResponse(dataview) {
+        return (equals(dataview.getUint8(2, true), ids.channelResponse) &&
+                !equals(dataview.getUint8(4, true), 1));
+    }
+
     return Object.freeze({
+        isResponse,
         encode,
         decode,
     });
@@ -1494,14 +1535,16 @@ const message = {
     libConfig:                LibConfig(),
 
     // control
-    resetSystem:         ResetSystem(),
-    openChannel:         OpenChannel(),
-    closeChannel:        CloseChannel(),
-    requestMessage:      RequestMessage(),
-    openRxScanMode:      OpenRxScanMode(),
-    sleep:               Sleep(),
+    resetSystem:          ResetSystem(),
+    openChannel:          OpenChannel(),
+    closeChannel:         CloseChannel(),
+    requestMessage:       RequestMessage(),
+    requestChannelStatus: RequestMessage({requestedMessageId: ids.channelStatus}),
+    openRxScanMode:       OpenRxScanMode(),
+    sleep:                Sleep(),
 
     // data
+    data:                Data(),
     broadcastData:       BroadcastData(),
     acknowledgedData:    AcknowledgedData(),
     burstTransferData:   BurstTransferData(),
