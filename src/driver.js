@@ -7,8 +7,8 @@ function Driver(args = {}) {
     function getOS() {
         if(!equals(navigator.appVersion.indexOf('Win'), -1)) return 'windows';
         if(!equals(navigator.appVersion.indexOf('Mac'), -1)) return 'macos';
-        if(!equals(navigator.appVersion.indexOf('Linux'), -1)) return 'linux';
         if(!equals(navigator.appVersion.indexOf('Android'), -1)) return 'android';
+        if(!equals(navigator.appVersion.indexOf('Linux'), -1)) return 'linux';
         return 'unknown';
     }
 
