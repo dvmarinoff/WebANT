@@ -11,22 +11,29 @@ const values = {
     baudRate:           115200,
 };
 
+const filters = {
+    dynastream: { filters: [{ usbVendorId: values.dynastreamId }] },
+};
+
 function USBDriver() {
     throw new Error('not implemented!');
 }
 
-function SerialDriver() {
-    throw new Error('not implemented!');
-}
-
-function SerialPolyfillDriver(args = {}) {
+function SerialDriver(args = {}) {
     const defaults = {
         filter:   [{ usbVendorId: values.dynastreamId }],
         baudRate: 115200,
         onData:  defaultOnData,
     };
 
-    const onData = existance(args.onData, defaults.onData);
+    async function defaultRequest() {
+        // get known device or request a new one
+        const port = await navigator.serial.requestPort(filters.dynastream);
+        return port;
+    }
+
+    const onData  = existance(args.onData, defaults.onData);
+    const request = existance(args.request, defaultRequest);
 
     let device;
     let port;
@@ -41,12 +48,6 @@ function SerialPolyfillDriver(args = {}) {
     function isReading() { return _reading; }
     function setReading(value) { _reading = value; return _reading; }
 
-    async function request() {
-        // get known device or request a new one
-        const device = await navigator.usb.requestDevice({filters: defaults.filter});
-        const port = new SerialPort(device);
-        return port;
-    }
 
     async function open(cb) {
         port = await request();
@@ -75,20 +76,16 @@ function SerialPolyfillDriver(args = {}) {
     async function read() {
         console.log(':serial :reading');
         while (port.readable && isReading()) {
-            // console.log('while');
             try {
                 while (true) {
                     const { value, done } = await reader.read();
                     if (done) { break; }
-                    // console.log('while while');
                     onData(value);
                 }
-                // console.log('not while while');
             } catch (error) {
                 console.error(`:serial :reader-error`, error);
             } finally {
                 reader.releaseLock();
-                // console.log('finally');
             }
         }
         writer.releaseLock();
@@ -104,7 +101,17 @@ function SerialPolyfillDriver(args = {}) {
         return await writer.write(dataview.buffer);
     }
 
-    return Object.freeze({
+    // return Object.freeze({
+    //     isOpen,
+    //     isReading,
+    //     request,
+    //     open,
+    //     close,
+    //     read,
+    //     write,
+    // });
+
+    return {
         isOpen,
         isReading,
         request,
@@ -112,7 +119,19 @@ function SerialPolyfillDriver(args = {}) {
         close,
         read,
         write,
-    });
+    };
+}
+
+function SerialPolyfillDriver(args = {}) {
+
+    async function request() {
+        // get known device or request a new one
+        const device = await navigator.usb.requestDevice(filters.dynastream);
+        const port = new SerialPort(device);
+        return port;
+    }
+
+    return SerialDriver(Object.assign(args, {request}));
 }
 
 
