@@ -1,5 +1,6 @@
 import { xf, equals, existance, isDataView, isArray, dataviewToArray, delay } from './functions.js';
 import { SerialDriver, SerialPolyfillDriver } from './web-serial.js';
+import { ids } from './constants.js';
 
 function Driver(args = {}) {
     let _driver;
@@ -36,7 +37,6 @@ function Driver(args = {}) {
     function start() {
         const self = this;
         xf.sub('ui:ant:driver:switch', onSwitch.bind(self));
-
         xf.sub('ant:driver:tx', onTx);
     }
 
@@ -59,6 +59,7 @@ function Driver(args = {}) {
     }
 
     async function open() {
+        xf.dispatch(`ant:driver:connecting`);
         await _driver.open(onOpen);
     }
 
@@ -70,19 +71,27 @@ function Driver(args = {}) {
     async function onOpen() {
         await delay(1000);
         xf.dispatch('ant:driver:ready');
-    }
-
-    function getChannel(data) {
-        if(isDataView(data)) return data.getUint8(3, true);
-        if(isArray(data)) return data[3];
-        return 0;
+        xf.dispatch(`ant:driver:connected`);
     }
 
     function onRx(data) {
-        const channel = getChannel(data);
+        channelDispatch(getChannel(data), data);
+    }
+    function isGlobal(data) {
+    }
+    function getId(data) { return data[2]; }
+    function getChannel(data) { return data[3]; }
+    function channelDispatch(channel, data) {
         console.log(`ant: rx: ${data}`);
-        xf.dispatch(`ant:driver:${channel}:rx`,
-                    new DataView(new Uint8Array(data).buffer));
+        if(equals(channel, 0)) {
+            for(let channel=0; channel<8; channel++) {
+                xf.dispatch(`ant:driver:${channel}:rx`,
+                            new DataView(new Uint8Array(data).buffer));
+            }
+        } else {
+            xf.dispatch(`ant:driver:${channel}:rx`,
+                        new DataView(new Uint8Array(data).buffer));
+        }
     }
 
     function onTx(dataview) {

@@ -242,6 +242,19 @@ body.dark-theme {
     padding: 0 15px;
 }
 
+.ant-switch.off .protocol-btn--label {
+    color: var(--gray);
+}
+.ant-switch.off .protocol-btn--icon {
+    fill: var(--gray);
+}
+.ant-switch.on .protocol-btn--label {
+    color: #fff;
+}
+.ant-switch.on .protocol-btn--icon {
+    fill: #fff;
+}
+
 .connection-switch:hover,
 .connection-icon-switch:hover {
     cursor: pointer;

@@ -752,7 +752,7 @@ function FEC() {
         if(equals(dataPage, 55)) return pages.dataPage55.decode(dataview);
         if(equals(dataPage, 16)) return pages.dataPage16.decode(dataview);
         if(equals(dataPage, 25)) return pages.dataPage25.decode(dataview);
-        return undefined;
+        return dataview;
     }
 
     return {

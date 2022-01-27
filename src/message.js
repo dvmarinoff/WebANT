@@ -961,12 +961,19 @@ function Data(args = {}) {
             payload = payloadDecoder(payload);
         }
 
-        return {
+        const res = {
             id,
             channelNumber,
             payload,
             valid,
         };
+
+        if(isExtended(dataview)) {
+            const channelId = channelIdDecoder(dataview);
+            res.channelId = channelId;
+        }
+
+        return res;
     }
 
     function channelIdDecoder(dataview) {
@@ -1521,6 +1528,26 @@ function deviceTypeToString(deviceType) {
     return 'unsupported';
 }
 
+function isExtended(dataview) {
+    return message.data.isExtended(dataview);
+}
+
+function isBroadcast(dataview) {
+    return message.data.isBroadcast(dataview);
+}
+
+function isAcknowledged(dataview) {
+    return message.data.isAcknowledged(dataview);
+}
+
+function isEvent(dataview) {
+    return message.channelEvent.isEvent(dataview);
+}
+
+function isResponse(dataview) {
+    return message.channelResponse.isResponse(dataview);
+}
+
 const message = {
     // config
     assignChannel:            AssignChannel(),
@@ -1559,6 +1586,13 @@ const message = {
     channelId:     ChannelId(),
     capabilities:  Capabilities(),
     serialNumber:  SerialNumber(),
+
+    // utils
+    isExtended,
+    isBroadcast,
+    isAcknowledged,
+    isEvent,
+    isResponse,
 };
 
 const utils = {

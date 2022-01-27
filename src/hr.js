@@ -306,7 +306,7 @@ function HR() {
         if(equals(dataPage, 5)) return pages.dataPage5.decode(dataview);
         if(equals(dataPage, 6)) return pages.dataPage6.decode(dataview);
         if(equals(dataPage, 7)) return pages.dataPage7.decode(dataview);
-        return undefined;
+        return dataview;
     }
 
     return {

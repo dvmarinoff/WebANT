@@ -242,6 +242,7 @@ class DeviceRequest extends HTMLElement {
     }
     clear() {
         this.list.innerHTML = '';
+        this.devices = new Map();
     }
 }
 
@@ -260,7 +261,7 @@ class ConnectionSwitch extends HTMLElement {
         this.loadingClass   = existance(this.getAttribute('loadingClass'), this.defaultLoadingClass());
         this.indicatorClass = existance(this.getAttribute('indicatorClass'), this.defaultIndicatorClass());
 
-        this.indicator = this.querySelector(`.${this.indicatorClass}`);
+        this.indicator = existance(this.querySelector(`.${this.indicatorClass}`), this);
 
         xf.sub('pointerup',                this.onEffect.bind(this), this);
         xf.sub(`${this.for}:connected`,    this.on.bind(this));

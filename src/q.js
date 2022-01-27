@@ -23,53 +23,35 @@ import { message } from './message.js';
 // channel response decoded { id, channelNumber, initMsgId, responseCode, valid, }
 // channel event decoded    { id, channelNumber, eventCode, valid, }
 
+// may use composite key to resolve all messages with the same id, like when many
+// control commands q, resolve them all
+
 function Q(args = {}) {
     let _q = new Map();
+    // let _q = {};
 
     function start() {const self = this;}
     function stop() {const self = this;}
 
-    function isResponse(dataview) {
-        return message.channelResponse.isResponse(dataview);
-    }
-
-    function isEvent(dataview) {
-        return message.channelEvent.isEvent(dataview);
-    }
-
-    function isEventSuccess(msg) {
-        return [0, 5].contains(msg.eventCode);
-    }
-
-    function needsResponse(dataview) {}
-
-    function needsEvent(dataview) {}
 
     function push(dataview) {
-        // const promise = new Promise();
-        // if(needsResponse(dataview)) {
-        //     // add channel repsonse promise
-        //     _q.set({});
-        // }
-        // if(needsEvent(dataview)) {
-        //     // add acknowledged data promise
-        // }
+        const id = dataview.getUint8(2, true);
+
+        const promise = new Promise(function (resolve, reject) {
+            _q.set(id, {resolve, reject});
+        });
+
+        // console.log(_q);
+        return promise;
     }
 
-    function pull(dataview) {
-        // if(isResponse(dataview)) {
-        //     // resolve channel repsonse promise
-        //     const msg = message.channelResponse.decode(dataview);
-        //     _q.get({initMsgId: msg.initMsgId});
-        // }
-        // if(isEvent(dataview)) {
-        //     const msg = message.channelEvent.decode(dataview);
-        //     if(isEventSuccess(msg)) {
-        //         resolve acknowledged data promise
-        //         _q.get({initMsgId: msg.initMsgId});
-        //     }
-        //     // reject acknowledged data promise, and retry
-        // }
+    function pull(decoded) {
+        const id = decoded.initMsgId;
+        const p = _q.get(id);
+        _q.delete(id);
+        if(exists(p)) {
+            p.resolve(decoded);
+        }
     }
 
     return Object.freeze({

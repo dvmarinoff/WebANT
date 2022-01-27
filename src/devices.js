@@ -1,5 +1,5 @@
 import { xf, equals, exists, existance, empty, last, dataviewToArray, delay } from './functions.js';
-import { keys, ids } from './constants.js';
+import { ids, events, keys } from './constants.js';
 import { message } from './message.js';
 import { fec } from './fec.js';
 import { hr } from './hr.js';
@@ -60,7 +60,6 @@ function Device(args = {}) {
     function pair(channelId) {
         deviceNumber     = channelId.deviceNumber;
         transmissionType = channelId.transmissionType;
-
         track();
     }
 
@@ -70,19 +69,20 @@ function Device(args = {}) {
         });
 
         xf.dispatch('ant:search:start');
+        xf.dispatch(`${name}:connecting`);
         console.log(`:channel :${channelNumber} :search `, config);
 
         write(message.unassignChannel.encode(config)); // maybe ??
-        write(message.setNetworkKey.encode(config));
-        write(message.assignChannel.encode(config));
-        write(message.setChannelId.encode(config));
-        write(message.enableExtRxMessages.encode(config));
-        write(message.lowPrioritySearchTimeout.encode(config));
-        write(message.searchTimeout.encode(config));
-        write(message.setChannelFrequency.encode(config));
-        write(message.setChannelPeriod.encode(config));
-        write(message.openChannel.encode(config));
-        write(message.requestChannelStatus.encode(config));
+        await write(message.setNetworkKey.encode(config));
+        await write(message.assignChannel.encode(config));
+        await write(message.setChannelId.encode(config));
+        await write(message.enableExtRxMessages.encode(config));
+        await write(message.lowPrioritySearchTimeout.encode(config));
+        await write(message.searchTimeout.encode(config));
+        await write(message.setChannelFrequency.encode(config));
+        await write(message.setChannelPeriod.encode(config));
+        await write(message.openChannel.encode(config));
+        // write(message.requestChannelStatus.encode(config));
     }
 
     async function track() {
@@ -96,29 +96,25 @@ function Device(args = {}) {
 
         console.log(`:channel :${channelNumber} :track `, config);
 
-        write(message.enableExtRxMessages.encode(config));
-        write(message.closeChannel.encode(config)); // should await this
+        await write(message.enableExtRxMessages.encode(config));
+        await write(message.closeChannel.encode(config));
+        // await delay(2000);
+        await write(message.unassignChannel.encode(config));
+        await write(message.setNetworkKey.encode(config));
+        await write(message.assignChannel.encode(config));
+        await write(message.setChannelId.encode(config));
+        await write(message.setChannelFrequency.encode(config));
+        await write(message.setChannelPeriod.encode(config));
+        await write(message.openChannel.encode(config));
+        // write(message.requestChannelStatus.encode(config));
 
-        await delay(2000);
-
-        write(message.unassignChannel.encode(config)); // maybe ??
-        write(message.setNetworkKey.encode(config));
-        write(message.assignChannel.encode(config));
-        write(message.setChannelId.encode(config));
-        write(message.setChannelFrequency.encode(config));
-        write(message.setChannelPeriod.encode(config));
-        write(message.openChannel.encode(config));
-
-        await delay(4000);
-        write(message.requestChannelStatus.encode(config));
+        xf.dispatch(`${name}:connected`);
     }
 
-    function close() {
-        const config = channelConfig.get({
-            profile, channelNumber, deviceNumber, status: 'tracking',
-        });
-        console.log(`:channel :${channelNumber} :close `, config);
-        write(message.closeChannel.encode(config));
+    async function close() {
+        console.log(`:channel :${channelNumber} :close `);
+        await write(message.closeChannel.encode({channelNumber}));
+        xf.dispatch(`${name}:disconnected`);
     }
 
     function isConnected() {
@@ -135,20 +131,37 @@ function Device(args = {}) {
         _connected = false;
     }
 
-    function onRx(data) {
-        if(message.data.isExtended(data)) {
-            const channelId = message.data.channelIdDecoder(data);
-            xf.dispatch('ant:search:found', channelId);
-            console.log('ant:search:found', channelId);
+    function onRx(dataview) {
+        let decoded;
+
+        if(message.isResponse(dataview)) {
+            decoded = message.channelResponse.decode(dataview);
+            onResponse(decoded);
         }
-        if(message.data.isBroadcast(data)) {
-            onData(message.broadcastData.decode(data).payload);
+        if(message.isEvent(dataview)) {
+            decoded = message.channelEvent.decode(dataview);
+            onEvent(decoded);
         }
+        if(message.isBroadcast(dataview)) {
+            decoded = message.broadcastData.decode(dataview);
+
+            if(exists(decoded.channelId)) {
+                xf.dispatch('ant:search:found', decoded.channelId);
+            }
+            onData(decoded.payload);
+        }
+    }
+    function onResponse(decoded) {
+        q.pull(decoded);
+    }
+    function onEvent(decoded) {
+        if(equals(decoded.eventCode, events.event_channel_closed)) {}
     }
 
     async function write(dataview, retry = false) {
         console.log(`:ant :tx ${dataviewToArray(dataview)}`);
         xf.dispatch('ant:driver:tx', dataview);
+        await q.push(dataview);
     }
 
     return {
