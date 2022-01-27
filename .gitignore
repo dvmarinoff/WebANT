@@ -1,3 +1,5 @@
 node_modules/
 src/data/
 notes.txt
+package-lock.json
+env.js
