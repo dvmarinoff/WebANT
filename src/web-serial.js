@@ -84,6 +84,7 @@ function SerialDriver(args = {}) {
                 }
             } catch (error) {
                 console.error(`:serial :reader-error`, error);
+                break;
             } finally {
                 reader.releaseLock();
             }
