@@ -619,3 +619,94 @@ body.dark-theme {
 .device-request--pair {
 }
 
+/* Targets */
+#targets {
+    font-size: 1rem;
+    padding: 0 1em;
+    --inner-max-width: 300px;
+    --mode-selector-margin: 1.8em auto;
+    --mode-selector-padding: 0 1em;
+
+    --number-input-height: 3rem;
+    --number-input-total-width: 100%;
+
+    --number-input-value-width: 40%;
+    --number-input-width: 30%;
+
+    --number-input-font-size: 1.2em;
+    --number-input-value-font-size: 1.4em;
+}
+.targets--cont {
+    margin: 0 auto;
+    max-width: var(--inner-max-width);
+}
+
+/* Number btn*/
+.number-input {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.number-input--value, .number-input--inc, .number-input--dec {
+    height: var(--number-input-height);
+}
+
+.number-input--value {
+    width: var(--number-input-value-width);
+    line-height: var(--number-input-line-height);
+    font-size: var(--number-input-value-font-size);
+    text-align: center;
+    border: 1px solid var(--white-opacity-01);
+}
+
+.number-input--btn {
+    font-size: var(--number-input-font-size);
+    width: var(--number-input-width);
+    text-align: center;
+}
+
+.number-input--inc {
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+}
+
+.number-input--dec {
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+}
+
+.mode-selector {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+    max-width: 100%;
+    margin: var(--mode-selector-margin);
+    font-size: 1em;
+    text-transform: uppercase;
+}
+
+.mode {
+    padding: var(--mode-selector-padding);
+    color: var(--gray);
+    cursor: pointer;
+}
+
+.mode.active {
+    color: #fff;
+    font-weight: bold;
+}
+
+.tab-btn.active .text {
+    color: var(--white);
+}
+.tab-btn.active .icon-fill {
+    fill: var(--white);
+}
+.tab.active {
+    display: block;
+}
+.tab {
+    display: none;
+}

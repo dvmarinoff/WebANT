@@ -311,6 +311,209 @@ class ConnectionSwitch extends HTMLElement {
 customElements.define('connection-switch', ConnectionSwitch);
 
 
+class SwitchGroup extends HTMLElement {
+    constructor() {
+        super();
+        this.state = 0;
+        this.postInit();
+    }
+    connectedCallback() {
+        this.switchList = this.querySelectorAll('.switch-item');
+        this.config();
+
+        xf.sub(`db:${this.prop}`, this.onState.bind(this));
+        this.addEventListener('pointerup', this.onSwitch.bind(this));
+    }
+    disconnectedCallback() {
+        xf.unsub(`db:${this.prop}`, this.onState.bind(this));
+        this.removeEventListener('pointerup', this.onSwitch.bind(this));
+    }
+    eventOwner(e) {
+        const pathLength = e.path.length;
+
+        for(let i = 0; i < pathLength; i++) {
+            if(exists(e.path[i].hasAttribute) &&
+               e.path[i].hasAttribute('index')) {
+                return e.path[i];
+            }
+        }
+
+        return e.path[0];
+    }
+    onSwitch(e) {
+        const element = this.eventOwner(e);
+
+        if(exists(element.attributes.index)) {
+
+            const id = parseInt(element.attributes.index.value) || 0;
+
+            if(equals(id, this.state)) {
+                return;
+            } else {
+                xf.dispatch(`${this.effect}`, id);
+            }
+        }
+    }
+    onState(state) {
+        this.state = state;
+        this.setSwitch(this.state);
+        this.renderEffect(this.state);
+    }
+    setSwitch(state) {
+        this.switchList.forEach(function(s, i) {
+            if(equals(i, state)) {
+                s.classList.add('active');
+            } else {
+                s.classList.remove('active');
+            }
+        });
+    }
+    // overwrite the rest to augment behavior
+    postInit() {
+        this.prop = '';
+    }
+    config() {
+    }
+    renderEffect(state) {
+        return state;
+    }
+}
+
+
+
+
+class TabBtn extends HTMLElement {
+    constructor() {
+        super();
+    }
+    connectedCallback() {
+        this.state = '';
+        this.effect = this.getAttribute('effect') || '';
+        this.param = this.getAttribute('param') || '';
+        this.prop = this.getAttribute('prop') || false;
+        this.addEventListener('pointerup', this.onEffect.bind(this));
+
+        if(this.prop) {
+            xf.sub(`db:${this.prop}`, this.onUpdate.bind(this));
+            document.removeEventListener(`db:${this.prop}`, this.onUpdate);
+        }
+    }
+    disconnectedCallback() {
+        this.removeEventListener('pointerup', this.onEffect);
+    }
+    onEffect(e) {
+        xf.dispatch(`ui:${this.effect}`, this.param);
+    }
+    onUpdate(state) {
+        this.state = state;
+        if(this.state === this.param) {
+            this.classList.remove('active');
+            this.classList.add('active');
+        } else {
+            this.classList.remove('active');
+        }
+    }
+}
+
+class TabGroup extends HTMLElement {
+    constructor() {
+        super();
+        this.tabClass = this.defaultTabSelector();
+        this.tabAttr = this.defaultTabAttr();
+        this.prop = this.getAttribute('prop') || '';
+        this.tabs = this.querySelectorAll(this.tabClass);
+    }
+    defaultTabSelector() { return '.tab'; }
+    defaultTabAttr() { return 'tab'; }
+    connectedCallback() {
+        xf.sub(`db:${this.prop}`, this.onUpdate.bind(this));
+    }
+    disconnectedCallback() {
+        document.removeEventListener(`db:${this.prop}`, this.onUpdate);
+    }
+    onUpdate(param) {
+        this.tabs.forEach(tab => {
+            if(this.getId(tab) === param) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+    }
+    getId(tab) {
+        return tab.getAttribute(this.tabAttr);
+    }
+}
+
+customElements.define('tab-btn', TabBtn);
+customElements.define('tab-group', TabGroup);
+
+class IntInput extends HTMLInputElement {
+    constructor() {
+        super();
+        this.state = 0;
+        this.prop = this.getAttribute('prop');
+        this.effect = this.getAttribute('effect');
+        this.postInit();
+    }
+    postInit() { return; }
+    connectedCallback() {
+        this.addEventListener('change', this.onChange.bind(this));
+        xf.sub(`db:${this.prop}`, this.onUpdate.bind(this));
+    }
+    disconnectedCallback() {
+        document.removeEventListener(`db:${this.prop}`, this.onUpdate);
+        this.removeEventListener('change', this.onChange);
+    }
+    onUpdate(value) {
+        if(!equals(value, this.state)) {
+            this.state = value;
+            this.render();
+        }
+    }
+    onChange(e) {
+        this.state = parseInt(e.target.value);
+        xf.dispatch(`ui:${this.effect}`, this.state);
+    }
+    render() {
+        this.value = this.state;
+    }
+}
+
+customElements.define('int-input', IntInput, {extends: 'input'});
+
+class FloatInput extends IntInput {
+    postInit() {
+        this.points = this.getAttribute('points') || 2;
+    }
+    onChange(e) {
+        this.state = parseFloat(e.target.value);
+        xf.dispatch(`ui:${this.effect}`, this.state);
+    }
+    render() {
+        this.value = (this.state).toFixed(this.points);
+    }
+}
+
+customElements.define('float-input', FloatInput, {extends: 'input'});
+
+class EffectButton extends HTMLButtonElement {
+    constructor() {
+        super();
+        this.effect = this.getAttribute('effect');
+    }
+    connectedCallback() {
+        this.addEventListener('pointerup', this.onEffect.bind(this));
+    }
+    disconnectedCallback() {
+        this.removeEventListener('pointerup', this.onEffect);
+    }
+    onEffect(e) {
+        xf.dispatch(`ui:${this.effect}`);
+    }
+}
+
+customElements.define('effect-button', EffectButton, {extends: 'button'});
 
 export {
     ConnectionSwitch,

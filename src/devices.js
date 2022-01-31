@@ -72,17 +72,17 @@ function Device(args = {}) {
         xf.dispatch(`${name}:connecting`);
         console.log(`:channel :${channelNumber} :search `, config);
 
-        write(message.unassignChannel.encode(config)); // maybe ??
-        await write(message.setNetworkKey.encode(config));
-        await write(message.assignChannel.encode(config));
-        await write(message.setChannelId.encode(config));
-        await write(message.enableExtRxMessages.encode(config));
-        await write(message.lowPrioritySearchTimeout.encode(config));
-        await write(message.searchTimeout.encode(config));
-        await write(message.setChannelFrequency.encode(config));
-        await write(message.setChannelPeriod.encode(config));
-        await write(message.openChannel.encode(config));
-        // write(message.requestChannelStatus.encode(config));
+        write(message.unassignChannel.encode(config)); // 65
+        await write(message.setNetworkKey.encode(config)); // 70
+        await write(message.assignChannel.encode(config)); // 66
+        await write(message.setChannelId.encode(config));  // 81
+        await write(message.enableExtRxMessages.encode(config)); // 102
+        await write(message.lowPrioritySearchTimeout.encode(config)); // 99
+        await write(message.searchTimeout.encode(config)); // 68
+        await write(message.setChannelFrequency.encode(config)); // 69
+        await write(message.setChannelPeriod.encode(config)); // 67
+        await write(message.openChannel.encode(config)); // 75
+        // write(message.requestChannelStatus.encode(config)); // 77
     }
 
     async function track() {
@@ -96,23 +96,20 @@ function Device(args = {}) {
 
         console.log(`:channel :${channelNumber} :track `, config);
 
-        await write(message.enableExtRxMessages.encode(config));
-        await write(message.closeChannel.encode(config));
-        // await delay(2000);
-        await write(message.unassignChannel.encode(config));
-        await write(message.setNetworkKey.encode(config));
-        await write(message.assignChannel.encode(config));
-        await write(message.setChannelId.encode(config));
-        await write(message.setChannelFrequency.encode(config));
-        await write(message.setChannelPeriod.encode(config));
-        await write(message.openChannel.encode(config));
-        // write(message.requestChannelStatus.encode(config));
-
+        await write(message.enableExtRxMessages.encode(config)); // 102
+        await write(message.closeChannel.encode(config)); // 76
+        await delay(2000); // ?? here should wait for something maybe channel event 7
+        await write(message.unassignChannel.encode(config)); // 65
+        await write(message.setNetworkKey.encode(config)); // 70
+        await write(message.assignChannel.encode(config)); // 66
+        await write(message.setChannelId.encode(config)); //81
+        await write(message.setChannelFrequency.encode(config)); // 69
+        await write(message.setChannelPeriod.encode(config)); // 67
+        await write(message.openChannel.encode(config)); //75
         xf.dispatch(`${name}:connected`);
     }
 
     async function close() {
-        console.log(`:channel :${channelNumber} :close `);
         await write(message.closeChannel.encode({channelNumber}));
         xf.dispatch(`${name}:disconnected`);
     }
@@ -158,7 +155,7 @@ function Device(args = {}) {
         if(equals(decoded.eventCode, events.event_channel_closed)) {}
     }
 
-    async function write(dataview, retry = false) {
+    async function write(dataview) {
         console.log(`:ant :tx ${dataviewToArray(dataview)}`);
         xf.dispatch('ant:driver:tx', dataview);
         await q.push(dataview);
@@ -245,6 +242,7 @@ function Controllable() {
     function start() {
         const self = this;
         device.start();
+        console.log('ant:controllable :start');
         xf.sub(`db:mode`, onMode.bind(self));
         xf.sub('db:powerTarget', onPowerTarget.bind(self));
         xf.sub('db:resistanceTarget', onResistanceTarget.bind(self));
@@ -265,6 +263,7 @@ function Controllable() {
     }
 
     function onPowerTarget(power) {
+        console.log(power);
         if(device.isConnected() && (equals(_mode, 'erg'))) {
             setPowerTarget(power);
         }
@@ -279,20 +278,20 @@ function Controllable() {
     }
 
     function control(dataPage) {
-        const view = message.acknowledgedData.encode({payload: dataPage});
+        const view = message.acknowledgedData.encode({channelNumber, payload: dataPage});
         device.write(view);
     }
 
     function setPowerTarget(power) {
-        return control(message.targetPower.encode(power, self.channel.number));
+        return control(fec.dataPage49.encode({power}));
     }
 
-    function setResistanceTarget(level) {
-        return control(message.targetResistance.encode(level, self.channel.number));
+    function setResistanceTarget(resistance) {
+        return control(fec.dataPage48.encode({resistance}));
     }
 
     function setSlopeTarget(grade) {
-        return control(message.targetSlope.encode(grade, self.channel.number));
+        return control(fec.dataPage51.encode({grade}));
     }
 
     function onData(payload) {
@@ -366,3 +365,4 @@ function Devices() {
 }
 
 export { Device, Controllable, Devices, };
+

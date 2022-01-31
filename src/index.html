@@ -152,6 +152,73 @@
                     </div> <!-- end device-card--cont -->
                 </div> <!-- end device-card -->
 
+                <div id="targets">
+                    <div class="targets--cont">
+                        <div class="tab-btn-group">
+                            <div id="mode-selector" class="mode-selector">
+                                <tab-btn id="erg-mode-btn"
+                                        class="mode active"
+                                        prop="mode"
+                                        effect="mode-set"
+                                        param="erg">ERG</tab-btn>
+                                <tab-btn id="slope-mode-btn"
+                                        class="mode"
+                                        prop="mode"
+                                        effect="mode-set"
+                                        param="slope">Slope</tab-btn>
+                            </div> <!-- end mode selector -->
+                        </div> <!-- tab-btn-group -->
+
+                        <tab-group prop="mode">
+                            <div id="erg-mode-controls" class="tab active mode-controls" tab="erg">
+                                <div id="power-control-btn" class="number-btn">
+                                    <div class="number-input">
+                                        <button is="effect-button"
+                                                id="power-target-dec"
+                                                class="number-input--dec number-input--btn btn"
+                                                effect="power-target-dec">-</button>
+                                        <input is="int-input"
+                                            id="power-target-input"
+                                            class="number-input--value"
+                                            type="number"
+                                            value="0"
+                                            autocomplete="off"
+                                            prop="powerTarget"
+                                            effect="power-target-set" />
+                                        <button is="effect-button"
+                                                id="power-target-inc"
+                                                class="number-input--inc number-input--btn btn"
+                                                effect="power-target-inc">+</button>
+                                    </div>
+                                </div>
+                            </div> <!-- end erg mode -->
+                            <div id="slope-mode-controls" class="tab mode-controls" tab="slope">
+                                <div id="slope-control-btn" class="number-btn">
+                                    <div class="number-input">
+                                        <button is="effect-button"
+                                                id="slope-target-dec"
+                                                class="number-input--dec number-input--btn btn"
+                                                effect="slope-target-dec">-</button>
+                                        <input is="float-input"
+                                            id="slope-target-input"
+                                            class="number-input--value input"
+                                            type="number"
+                                            value="0"
+                                            autocomplete="off"
+                                            points="1"
+                                            prop="slopeTarget"
+                                            effect="slope-target-set" />
+                                        <button is="effect-button"
+                                                id="slope-target-inc"
+                                                class="number-input--inc number-input--btn btn"
+                                                effect="slope-target-inc">+</button>
+                                    </div>
+                                </div>
+                            </div> <!-- end slope mode -->
+                        </tab-group>
+                    </div> <!-- end targets--cont -->
+                </div> <!-- end targets -->
+
                 <div id="about">
                     <h2 class="page--heading">About</h2>
                     <div class="about--text">

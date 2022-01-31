@@ -23,34 +23,25 @@ import { message } from './message.js';
 // channel response decoded { id, channelNumber, initMsgId, responseCode, valid, }
 // channel event decoded    { id, channelNumber, eventCode, valid, }
 
-// may use composite key to resolve all messages with the same id, like when many
-// control commands q, resolve them all
-
 function Q(args = {}) {
     let _q = new Map();
-    // let _q = {};
-
-    function start() {const self = this;}
-    function stop() {const self = this;}
-
 
     function push(dataview) {
         const id = dataview.getUint8(2, true);
 
         const promise = new Promise(function (resolve, reject) {
-            _q.set(id, {resolve, reject});
+            _q.set(id, {resolve: resolve});
         });
 
-        // console.log(_q);
         return promise;
     }
 
     function pull(decoded) {
         const id = decoded.initMsgId;
         const p = _q.get(id);
-        _q.delete(id);
         if(exists(p)) {
             p.resolve(decoded);
+            _q.delete(id);
         }
     }
 

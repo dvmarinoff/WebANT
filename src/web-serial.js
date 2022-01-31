@@ -57,11 +57,10 @@ function SerialDriver(args = {}) {
         setIsOpen(true);
         setReading(true);
 
-        reader = port.readable.pipeThrough(
-            new TransformStream(new MessageTransformer())
-        ).getReader();
-
         writer = port.writable.getWriter();
+        // reader = port.readable.pipeThrough(
+        //     new TransformStream(new MessageTransformer())
+        // ).getReader();
 
         cb();
         read();
@@ -76,6 +75,10 @@ function SerialDriver(args = {}) {
     async function read() {
         console.log(':serial :reading');
         while (port.readable && isReading()) {
+            reader = port.readable.pipeThrough(
+                new TransformStream(new MessageTransformer())
+            ).getReader();
+
             try {
                 while (true) {
                     const { value, done } = await reader.read();
@@ -101,16 +104,6 @@ function SerialDriver(args = {}) {
     async function write(dataview) {
         return await writer.write(dataview.buffer);
     }
-
-    // return Object.freeze({
-    //     isOpen,
-    //     isReading,
-    //     request,
-    //     open,
-    //     close,
-    //     read,
-    //     write,
-    // });
 
     return {
         isOpen,
