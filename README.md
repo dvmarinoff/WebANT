@@ -17,7 +17,7 @@ Just published the first working version of the [demo](https://web-ant.vercel.ap
 1. click on the grey ANT+ label at the top, in order to connect the USB stick
 2. click OK to give permissions for the usb stick, now the grey ANT+ label should become white
 3. start search for a device by clicking on one of the chip icons with the red dot
-4. once a device is found it will show inside the seach popup, select a device by clicking on it's name and click pair
+4. once a device is found it will show inside the seach popup, select a device by clicking on it's name and click pair. Note that 17 means Controllable, 120 Heart Rate Monitor.
 5. once done click the chip icon with the green dot to properly disconnect the device, else it will leave an open channel,
    and you will need to reload the page and reattach the usb stick.
 
