@@ -241,7 +241,7 @@ class SerialPort {
             }
 
             // await this.setLineCoding();
-            await this.setSignals({dataTerminalReady: true});
+            // await this.setSignals({dataTerminalReady: true});
         } catch (error) {
             if (this.device_.opened) {
                 await this.device_.close();
